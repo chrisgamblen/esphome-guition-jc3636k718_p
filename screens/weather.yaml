@@ -1,5 +1,7 @@
 # Weather - optional carousel screen (base id 5).
-# Shows today's conditions big; turn the knob to scroll the next days (up to 7).
+# Apple-watch-style dial: the 7 forecast days sit around a ring, the selected day's temp
+# is big in the centre, its condition is written at the bottom. Turn the knob to move the
+# highlight around the ring (and update the centre).
 #
 # The 7-day forecast comes from a Home Assistant helper sensor (HA no longer exposes the
 # forecast as an attribute). Add screens/weather.ha-helper.yaml to your HA config; it
@@ -25,6 +27,9 @@ globals:
   - id: g_wx_cond          # per-day condition keyword
     type: std::string[7]
     restore_value: no
+  - id: g_wx_icon          # per-day icon glyph (precomputed at parse time)
+    type: std::string[7]
+    restore_value: no
   - id: g_wx_name          # per-day short name (Mon/Tue/...)
     type: std::string[7]
     restore_value: no
@@ -38,7 +43,7 @@ globals:
     type: int
     restore_value: no
     initial_value: '0'
-  - id: g_wx_day           # day shown (0 = today)
+  - id: g_wx_day           # day shown / highlighted (0 = today)
     type: int
     restore_value: no
     initial_value: '0'
@@ -46,7 +51,7 @@ globals:
 font:
   - file: "https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf"
     id: icons_wx
-    size: 96
+    size: 30
     bpp: 4
     glyphs: ["󰖙", "󰖔", "󰖕", "󰖑", "󰖝", "󰖓", "󰖖", "󰖗", "󰖘", "󰖐"]
 
@@ -60,21 +65,25 @@ script:
             if (d == 0) return std::string("Today");
             if (d < id(g_wx_n)) return id(g_wx_name)[d];
             return std::string("");
-      - lvgl.label.update:
-          id: wx_p_icon
-          text: !lambda |-
-            int d = id(g_wx_day);
-            std::string s = (d < id(g_wx_n)) ? id(g_wx_cond)[d] : id(g_wx_state_cur);
-            if (s == "sunny") return std::string("󰖙");
-            if (s == "clear-night") return std::string("󰖔");
-            if (s == "partlycloudy") return std::string("󰖕");
-            if (s == "fog") return std::string("󰖑");
-            if (s == "windy" || s == "windy-variant") return std::string("󰖝");
-            if (s == "lightning" || s == "lightning-rainy") return std::string("󰖓");
-            if (s == "pouring") return std::string("󰖖");
-            if (s == "rainy") return std::string("󰖗");
-            if (s == "snowy" || s == "snowy-rainy" || s == "hail") return std::string("󰖘");
-            return std::string("󰖐");
+      # move the highlight behind the selected day's icon
+      - lvgl.widget.update:
+          id: wx_sel
+          hidden: !lambda 'return id(g_wx_n) <= 0;'
+          x: !lambda |-
+            static const int X[7] = {0, 92, 115, 51, -51, -115, -92};
+            int d = id(g_wx_day); if (d < 0) d = 0; if (d > 6) d = 6;
+            return X[d];
+          y: !lambda |-
+            static const int Y[7] = {-118, -74, 26, 106, 106, 26, -74};
+            int d = id(g_wx_day); if (d < 0) d = 0; if (d > 6) d = 6;
+            return Y[d];
+      - lvgl.label.update: { id: wx_d0, text: !lambda 'return id(g_wx_n) > 0 ? id(g_wx_icon)[0] : std::string("");' }
+      - lvgl.label.update: { id: wx_d1, text: !lambda 'return id(g_wx_n) > 1 ? id(g_wx_icon)[1] : std::string("");' }
+      - lvgl.label.update: { id: wx_d2, text: !lambda 'return id(g_wx_n) > 2 ? id(g_wx_icon)[2] : std::string("");' }
+      - lvgl.label.update: { id: wx_d3, text: !lambda 'return id(g_wx_n) > 3 ? id(g_wx_icon)[3] : std::string("");' }
+      - lvgl.label.update: { id: wx_d4, text: !lambda 'return id(g_wx_n) > 4 ? id(g_wx_icon)[4] : std::string("");' }
+      - lvgl.label.update: { id: wx_d5, text: !lambda 'return id(g_wx_n) > 5 ? id(g_wx_icon)[5] : std::string("");' }
+      - lvgl.label.update: { id: wx_d6, text: !lambda 'return id(g_wx_n) > 6 ? id(g_wx_icon)[6] : std::string("");' }
       - lvgl.label.update:
           id: wx_p_temp
           text: !lambda |-
@@ -89,15 +98,27 @@ script:
           text: !lambda |-
             int d = id(g_wx_day);
             if (d >= id(g_wx_n)) return std::string("");
-            char b[24]; snprintf(b, sizeof(b), "H %d°   L %d°", id(g_wx_hi)[d], id(g_wx_lo)[d]);
+            char b[24]; snprintf(b, sizeof(b), "H:%d°  L:%d°", id(g_wx_hi)[d], id(g_wx_lo)[d]);
             return std::string(b);
       - lvgl.label.update:
-          id: wx_p_hint
+          id: wx_p_cond
           text: !lambda |-
-            int n = id(g_wx_n);
-            if (n <= 0) return std::string("turn knob - add HA forecast helper");
-            char b[20]; snprintf(b, sizeof(b), "‹ %d / %d ›", id(g_wx_day) + 1, n);
-            return std::string(b);
+            int d = id(g_wx_day);
+            if (id(g_wx_n) <= 0) return std::string("Add the HA forecast helper");
+            std::string s = (d < id(g_wx_n)) ? id(g_wx_cond)[d] : id(g_wx_state_cur);
+            if (s == "sunny") return std::string("Sunny");
+            if (s == "clear-night") return std::string("Clear");
+            if (s == "partlycloudy") return std::string("Partly Cloudy");
+            if (s == "cloudy") return std::string("Cloudy");
+            if (s == "fog") return std::string("Fog");
+            if (s == "rainy") return std::string("Rainy");
+            if (s == "pouring") return std::string("Heavy Rain");
+            if (s == "lightning" || s == "lightning-rainy") return std::string("Storm");
+            if (s == "snowy" || s == "snowy-rainy") return std::string("Snow");
+            if (s == "hail") return std::string("Hail");
+            if (s == "windy" || s == "windy-variant") return std::string("Windy");
+            if (s == "exceptional") return std::string("Severe");
+            return s;
 
 sensor:
   - platform: homeassistant
@@ -120,7 +141,20 @@ text_sensor:
     entity_id: ${forecast_entity}
     on_value:
       - lambda: |-
+          auto glyph = [](const std::string &s) -> std::string {
+            if (s == "sunny") return std::string("󰖙");
+            if (s == "clear-night") return std::string("󰖔");
+            if (s == "partlycloudy") return std::string("󰖕");
+            if (s == "fog") return std::string("󰖑");
+            if (s == "windy" || s == "windy-variant") return std::string("󰖝");
+            if (s == "lightning" || s == "lightning-rainy") return std::string("󰖓");
+            if (s == "pouring") return std::string("󰖖");
+            if (s == "rainy") return std::string("󰖗");
+            if (s == "snowy" || s == "snowy-rainy" || s == "hail") return std::string("󰖘");
+            return std::string("󰖐");
+          };
           std::string s = x;
+          for (int i = 0; i < 7; i++) { id(g_wx_icon)[i] = ""; id(g_wx_cond)[i] = ""; }
           int n = 0; size_t pos = 0;
           while (n < 7) {
             size_t bar = s.find('|', pos);
@@ -130,7 +164,9 @@ text_sensor:
               size_t c2 = seg.find(',', c1 + 1);
               size_t c3 = (c2 != std::string::npos) ? seg.find(',', c2 + 1) : std::string::npos;
               if (c2 != std::string::npos && c3 != std::string::npos) {
-                id(g_wx_cond)[n] = seg.substr(0, c1);
+                std::string cond = seg.substr(0, c1);
+                id(g_wx_cond)[n] = cond;
+                id(g_wx_icon)[n] = glyph(cond);
                 id(g_wx_hi)[n] = atoi(seg.substr(c1 + 1, c2 - c1 - 1).c_str());
                 id(g_wx_lo)[n] = atoi(seg.substr(c2 + 1, c3 - c2 - 1).c_str());
                 id(g_wx_name)[n] = seg.substr(c3 + 1);
@@ -156,7 +192,7 @@ interval:
             - if: { condition: { lambda: 'return id(g_nav_anim)==2;' }, then: [lvgl.page.show: { id: page_weather, animation: move_top,    time: 250ms }] }
             - if: { condition: { lambda: 'return id(g_nav_anim)==3;' }, then: [lvgl.page.show: { id: page_weather, animation: move_bottom, time: 250ms }] }
             - script.execute: wx_render
-  # knob scrolls the day while this screen is active
+  # knob scrolls the highlighted day while this screen is active
   - interval: 120ms
     then:
       - if:
@@ -174,8 +210,40 @@ lvgl:
     - id: page_weather
       bg_color: 0x0B1020
       widgets:
-        - label: { id: wx_p_title, align: TOP_MID,    y: 46,  text: "Today", text_font: font_med,     text_color: 0x9FC7BE }
-        - label: { id: wx_p_icon,  align: CENTER,     y: -34, text: "󰖐",     text_font: icons_wx,     text_color: 0xFFD24A }
-        - label: { id: wx_p_temp,  align: CENTER,     y: 60,  text: "--°",   text_font: montserrat_48, text_color: 0xFFFFFF }
-        - label: { id: wx_p_hilo,  align: CENTER,     y: 108, text: "",      text_font: font_med,     text_color: 0xBFD2DA }
-        - label: { id: wx_p_hint,  align: BOTTOM_MID, y: -34, text: "",      text_font: font_artist,  text_color: 0x5FF0D9 }
+        - label: { id: wx_p_title, align: TOP_MID, y: 24, text: "Today", text_font: font_med, text_color: 0x9FC7BE }
+        # highlight ring behind the selected day's icon (moved in wx_render)
+        - obj:
+            id: wx_sel
+            align: CENTER
+            x: 0
+            y: -118
+            width: 44
+            height: 44
+            radius: 22
+            bg_color: 0x2A6BD4
+            bg_opa: 45%
+            border_width: 2
+            border_color: 0x6FA8FF
+            hidden: true
+        # 7 day icons around the ring (fixed positions; glyphs set in wx_render)
+        - label: { id: wx_d0, align: CENTER, x: 0,    y: -118, text: "", text_font: icons_wx, text_color: 0xFFE08A }
+        - label: { id: wx_d1, align: CENTER, x: 92,   y: -74,  text: "", text_font: icons_wx, text_color: 0xFFE08A }
+        - label: { id: wx_d2, align: CENTER, x: 115,  y: 26,   text: "", text_font: icons_wx, text_color: 0xFFE08A }
+        - label: { id: wx_d3, align: CENTER, x: 51,   y: 106,  text: "", text_font: icons_wx, text_color: 0xFFE08A }
+        - label: { id: wx_d4, align: CENTER, x: -51,  y: 106,  text: "", text_font: icons_wx, text_color: 0xFFE08A }
+        - label: { id: wx_d5, align: CENTER, x: -115, y: 26,   text: "", text_font: icons_wx, text_color: 0xFFE08A }
+        - label: { id: wx_d6, align: CENTER, x: -92,  y: -74,  text: "", text_font: icons_wx, text_color: 0xFFE08A }
+        # centre: big temp + hi/lo
+        - label: { id: wx_p_temp, align: CENTER, y: -6, text: "--°", text_font: montserrat_48, text_color: 0xFFFFFF }
+        - label: { id: wx_p_hilo, align: CENTER, y: 36, text: "", text_font: font_artist, text_color: 0xBFD2DA }
+        # bottom: condition text (narrow + centred so it stays inside the round screen)
+        - label:
+            id: wx_p_cond
+            align: BOTTOM_MID
+            y: -30
+            width: 200
+            long_mode: wrap
+            text_align: CENTER
+            text: ""
+            text_font: font_med
+            text_color: 0x5FF0D9
