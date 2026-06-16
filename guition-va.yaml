@@ -31,10 +31,24 @@ esphome:
     board_build.f_flash: 80000000L
     board_build.f_cpu: 240000000L
   on_boot:
-    - priority: 700
+    - priority: 800
       then:
         - lambda: |-
             id(g_order_n) = 0;
+            id(g_set_n) = 0;
+            id(g_set_labels) = "";
+            id(g_set_games_done) = false;
+    - priority: 790
+      then:
+        - lambda: |-
+            // core settings entries: label + the g_mode each opens. Packages add their own.
+            id(g_set_labels) += "Display";    id(g_set_items)[id(g_set_n)++] = 11;
+            id(g_set_labels) += "\nRing";      id(g_set_items)[id(g_set_n)++] = 16;
+            id(g_set_labels) += "\nAssistant"; id(g_set_items)[id(g_set_n)++] = 13;
+            id(g_set_labels) += "\nSystem";    id(g_set_items)[id(g_set_n)++] = 15;
+    - priority: 700
+      then:
+        - lambda: |-
             id(g_order)[id(g_order_n)++] = 0;   // clock (always on)
             // timer (base 2) is registered by screens/timer.yaml so its carousel slot is optional;
             // the timer FEATURE (voice timers, alarm, home badge) stays here in the core always.
@@ -42,6 +56,7 @@ esphome:
       then:
         - script.execute: night_apply    # brightness per g_bright / night mode
         - script.execute: disp_apply     # show/hide weather + temp/humidity per settings
+        - script.execute: settings_build # push the dynamic settings list into the roller
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -563,6 +578,21 @@ globals:
     type: int
     restore_value: no
     initial_value: '0'
+  # --- Dynamic settings registry: each screen package can add its own entries ---
+  - id: g_set_items      # g_mode each settings row opens
+    type: int[12]
+    restore_value: no
+  - id: g_set_n
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: g_set_labels     # newline-joined roller labels, applied at boot
+    type: std::string
+    restore_value: no
+  - id: g_set_games_done # guard so the shared "Games" entry is added once
+    type: bool
+    restore_value: no
+    initial_value: 'false'
 
 # Shows the volume arc for ~2 s while turning the knob, then hides it (mode: restart)
 script:
@@ -580,6 +610,10 @@ script:
       - if: { condition: { lambda: 'return id(g_base)==2 && id(g_nav_anim)==2;' }, then: [lvgl.page.show: { id: page_timer,  animation: move_top,    time: 250ms }] }
       - if: { condition: { lambda: 'return id(g_base)==2 && id(g_nav_anim)==3;' }, then: [lvgl.page.show: { id: page_timer,  animation: move_bottom, time: 250ms }] }
       - if: { condition: { lambda: 'return id(g_base) >= 3;' }, then: [ lambda: 'id(g_nav_req) = true;' ] }
+  # Apply the dynamically-built settings list to the roller (called once at boot).
+  - id: settings_build
+    then:
+      - lambda: 'lv_roller_set_options(id(settings_roller), id(g_set_labels).c_str(), LV_ROLLER_MODE_NORMAL);'
   # Draws the battery indicator on the home screen. Charging: lightning bolt + green +
   # "filling" animation (icon cycles empty→full). On battery: static level icon.
   - id: batt_render
@@ -1184,7 +1218,7 @@ binary_sensor:
                 then:
                   - lambda: |-
                       if (id(g_mode) == 11) { if (id(g_disp_idx) < 6) id(g_disp_idx)++; }
-                      else if (id(g_mode) == 5) { if (id(g_set_idx) < 4) id(g_set_idx)++; }
+                      else if (id(g_mode) == 5) { if (id(g_set_idx) < id(g_set_n) - 1) id(g_set_idx)++; }
                       else { int mx = (id(g_mode) == 15) ? 3 : (id(g_mode) == 13) ? 1 : (id(g_mode) == 16) ? 3 : 0; if (id(g_sub_idx) < mx) id(g_sub_idx)++; }
                   - script.execute: ui_render
                 else:
@@ -1506,11 +1540,8 @@ touchscreen:
               condition:
                 lambda: 'return id(g_gesture) == 0;'
               then:
-                - if: { condition: { lambda: 'return id(g_set_idx) == 0;' }, then: [ lambda: 'id(g_mode) = 11; id(g_disp_idx) = 0;', script.execute: ui_render ] }
-                - if: { condition: { lambda: 'return id(g_set_idx) == 1;' }, then: [ lambda: 'id(g_mode) = 16; id(g_sub_idx) = 0;', script.execute: ui_render ] }
-                - if: { condition: { lambda: 'return id(g_set_idx) == 2;' }, then: [ lambda: 'id(g_mode) = 13; id(g_sub_idx) = 0;', script.execute: ui_render ] }
-                - if: { condition: { lambda: 'return id(g_set_idx) == 3;' }, then: [ lambda: 'id(g_mode) = 14; id(g_sub_idx) = 0;', script.execute: ui_render ] }
-                - if: { condition: { lambda: 'return id(g_set_idx) == 4;' }, then: [ lambda: 'id(g_mode) = 15; id(g_sub_idx) = 0;', script.execute: ui_render ] }
+                - lambda: 'id(g_mode) = id(g_set_items)[id(g_set_idx)]; id(g_disp_idx) = 0; id(g_sub_idx) = 0;'
+                - script.execute: ui_render
           - if:   # back: swipe right / hold -> "to the right"
               condition:
                 lambda: 'return id(g_gesture) == 3 || id(g_gesture) == 1;'
@@ -2463,7 +2494,6 @@ lvgl:
               - "Display"
               - "Ring"
               - "Assistant"
-              - "Games"
               - "System"
             selected_index: 0
     # --- TIMER page (left of the clock): ring + controls ---
