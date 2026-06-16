@@ -31,10 +31,19 @@ esphome:
     board_build.f_flash: 80000000L
     board_build.f_cpu: 240000000L
   on_boot:
-    priority: -100
-    then:
-      - script.execute: night_apply    # brightness per g_bright / night mode
-      - script.execute: disp_apply     # show/hide weather + temp/humidity per settings
+    - priority: 700
+      then:
+        - lambda: |-
+            id(g_order_n) = 0;
+            id(g_order)[id(g_order_n)++] = 0;   // clock
+            id(g_order)[id(g_order_n)++] = 1;   // player
+            id(g_order)[id(g_order_n)++] = 2;   // timer
+            id(g_order)[id(g_order_n)++] = 3;   // cars  (moves to its package in stage B)
+            id(g_order)[id(g_order_n)++] = 4;   // space (moves to its package in stage C)
+    - priority: -100
+      then:
+        - script.execute: night_apply    # brightness per g_bright / night mode
+        - script.execute: disp_apply     # show/hide weather + temp/humidity per settings
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -700,8 +709,50 @@ globals:
     restore_value: yes
     initial_value: 'true'
 
+  # --- Modular carousel contract: shared globals so the core never names a screen's symbols ---
+  - id: g_order
+    type: int[8]
+    restore_value: no
+  - id: g_order_n
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: g_nav_req
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: g_nav_anim
+    type: int
+    restore_value: no
+    initial_value: '1'
+  - id: g_knob_capture
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: g_knob_delta
+    type: int
+    restore_value: no
+    initial_value: '0'
+
 # Shows the volume arc for ~2 s while turning the knob, then hides it (mode: restart)
 script:
+  # Carousel router: show the screen for g_base. Core pages directly; optional screens
+  # (cars/space) show themselves via g_nav_req. g_nav_anim: 0=left 1=right 2=top 3=bottom.
+  - id: show_base
+    then:
+      - if: { condition: { lambda: 'return id(g_base)==0 && id(g_nav_anim)==0;' }, then: [lvgl.page.show: { id: page_home,   animation: move_left,   time: 250ms }] }
+      - if: { condition: { lambda: 'return id(g_base)==0 && id(g_nav_anim)==1;' }, then: [lvgl.page.show: { id: page_home,   animation: move_right,  time: 250ms }] }
+      - if: { condition: { lambda: 'return id(g_base)==0 && id(g_nav_anim)==2;' }, then: [lvgl.page.show: { id: page_home,   animation: move_top,    time: 250ms }] }
+      - if: { condition: { lambda: 'return id(g_base)==0 && id(g_nav_anim)==3;' }, then: [lvgl.page.show: { id: page_home,   animation: move_bottom, time: 250ms }] }
+      - if: { condition: { lambda: 'return id(g_base)==1 && id(g_nav_anim)==0;' }, then: [lvgl.page.show: { id: page_player, animation: move_left,   time: 250ms }] }
+      - if: { condition: { lambda: 'return id(g_base)==1 && id(g_nav_anim)==1;' }, then: [lvgl.page.show: { id: page_player, animation: move_right,  time: 250ms }] }
+      - if: { condition: { lambda: 'return id(g_base)==1 && id(g_nav_anim)==2;' }, then: [lvgl.page.show: { id: page_player, animation: move_top,    time: 250ms }] }
+      - if: { condition: { lambda: 'return id(g_base)==1 && id(g_nav_anim)==3;' }, then: [lvgl.page.show: { id: page_player, animation: move_bottom, time: 250ms }] }
+      - if: { condition: { lambda: 'return id(g_base)==2 && id(g_nav_anim)==0;' }, then: [lvgl.page.show: { id: page_timer,  animation: move_left,   time: 250ms }] }
+      - if: { condition: { lambda: 'return id(g_base)==2 && id(g_nav_anim)==1;' }, then: [lvgl.page.show: { id: page_timer,  animation: move_right,  time: 250ms }] }
+      - if: { condition: { lambda: 'return id(g_base)==2 && id(g_nav_anim)==2;' }, then: [lvgl.page.show: { id: page_timer,  animation: move_top,    time: 250ms }] }
+      - if: { condition: { lambda: 'return id(g_base)==2 && id(g_nav_anim)==3;' }, then: [lvgl.page.show: { id: page_timer,  animation: move_bottom, time: 250ms }] }
+      - if: { condition: { lambda: 'return id(g_base) >= 3;' }, then: [ lambda: 'id(g_nav_req) = true;' ] }
   # Draws the battery indicator on the home screen. Charging: lightning bolt + green +
   # "filling" animation (icon cycles empty→full). On battery: static level icon.
   - id: batt_render
@@ -768,22 +819,11 @@ script:
             - if:   # -> BASE: return per g_base (0=clock 1=player 2=timer); direction per g_exit_anim (0=right 1=down 2=up)
                 condition: { lambda: 'return id(g_mode) == 0;' }
                 then:
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==1 && id(g_base)==0;' }, then: [lvgl.page.show: { id: page_home,   animation: move_bottom, time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==1 && id(g_base)==1;' }, then: [lvgl.page.show: { id: page_player, animation: move_bottom, time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==1 && id(g_base)==2;' }, then: [lvgl.page.show: { id: page_timer,  animation: move_bottom, time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==2 && id(g_base)==0;' }, then: [lvgl.page.show: { id: page_home,   animation: move_top,    time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==2 && id(g_base)==1;' }, then: [lvgl.page.show: { id: page_player, animation: move_top,    time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==2 && id(g_base)==2;' }, then: [lvgl.page.show: { id: page_timer,  animation: move_top,    time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==0 && id(g_base)==0;' }, then: [lvgl.page.show: { id: page_home,   animation: move_right,  time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==0 && id(g_base)==1;' }, then: [lvgl.page.show: { id: page_player, animation: move_right,  time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==0 && id(g_base)==2;' }, then: [lvgl.page.show: { id: page_timer,  animation: move_right,  time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==1 && id(g_base)==3;' }, then: [lvgl.page.show: { id: page_game,   animation: move_bottom, time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==2 && id(g_base)==3;' }, then: [lvgl.page.show: { id: page_game,   animation: move_top,    time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==0 && id(g_base)==3;' }, then: [lvgl.page.show: { id: page_game,   animation: move_right,  time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==1 && id(g_base)==4;' }, then: [lvgl.page.show: { id: page_game2,  animation: move_bottom, time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==2 && id(g_base)==4;' }, then: [lvgl.page.show: { id: page_game2,  animation: move_top,    time: 250ms }] }
-                  - if: { condition: { lambda: 'return id(g_exit_anim)==0 && id(g_base)==4;' }, then: [lvgl.page.show: { id: page_game2,  animation: move_right,  time: 250ms }] }
-                  - lambda: 'id(g_exit_anim) = 0;'
+                  - lambda: |-
+                      // g_exit_anim 0=right 1=down 2=up  ->  g_nav_anim 1=right 3=bottom 2=top
+                      id(g_nav_anim) = (id(g_exit_anim)==1) ? 3 : (id(g_exit_anim)==2) ? 2 : 1;
+                      id(g_exit_anim) = 0;
+                  - script.execute: show_base
             - if:   # -> SETTINGS (list): from base "from top" (swipe ↓), from a sub-screen "back" (to the right)
                 condition: { lambda: 'return id(g_mode) == 5;' }
                 then:
@@ -1311,6 +1351,7 @@ script:
       - lambda: |-
           id(g_game_state) = 1; id(g_score) = 0; id(g_gspeed) = 11;
           id(g_car_lane) = 1; id(g_lives) = 3; id(g_inv) = 0;
+          id(g_knob_capture) = true; id(g_knob_delta) = 0;
       - lvgl.widget.update: { id: car, x: -120 }
       - script.execute: obs1_spawn
       - script.execute: obs2_spawn
@@ -1330,7 +1371,7 @@ script:
   - id: game_crash   # GAME OVER (0 lives) - save score + insert into top 10
     then:
       - lambda: |-
-          id(g_game_state) = 2;
+          id(g_game_state) = 2; id(g_knob_capture) = false;
           int s = id(g_score);
           if (s > id(g_best)) id(g_best) = s;
           for (int i = 0; i < 10; i++) {
@@ -1355,6 +1396,7 @@ script:
       - lambda: |-
           id(g_sw_state)=1; id(g_sw_score)=0; id(g_sw_lives)=3; id(g_sw_inv)=0;
           id(g_sw_px)=0; id(g_fire)=0; id(g_tcount)=0;
+          id(g_knob_capture)=true; id(g_knob_delta)=0;
           id(g_exp_f)=0; id(g_exp_new)=false; id(g_exp_hide)=false;
           for (int i=0;i<2;i++){ id(g_b_on)[i]=false; id(g_eb_on)[i]=false; }
           for (int i=0;i<3;i++){ id(g_en_on)[i]=true; id(g_en_x)[i]=(int)(esp_random()%280)-140; id(g_en_y)[i]=-160 - i*70; }
@@ -1371,7 +1413,7 @@ script:
   - id: sw_over
     then:
       - lambda: |-
-          id(g_sw_state)=2;
+          id(g_sw_state)=2; id(g_knob_capture)=false;
           int s=id(g_sw_score);
           if (s>id(g_sw_best)) id(g_sw_best)=s;
           for (int i=0;i<10;i++){ if(s>id(g_sw_top)[i]){ for(int j=9;j>i;j--) id(g_sw_top)[j]=id(g_sw_top)[j-1]; id(g_sw_top)[i]=s; break; } }
@@ -1585,22 +1627,14 @@ binary_sensor:
     on_press:
       - if:
           condition:
-            lambda: 'return id(g_mode) == 0 && ((id(g_base) == 2 && !id(g_timer_active)) || (id(g_base) == 3 && id(g_game_state) == 1) || (id(g_base) == 4 && id(g_sw_state) == 1));'
+            lambda: 'return id(g_mode) == 0 && (id(g_knob_capture) || (id(g_base) == 2 && !id(g_timer_active)));'
           then:
-            - if:   # Space: ship left
-                condition: { lambda: 'return id(g_base) == 4;' }
-                then:
-                  - lambda: 'id(g_sw_px) -= 18; if (id(g_sw_px) < -150) id(g_sw_px) = -150;'
-                  - script.execute: sw_render
+            - if:
+                condition: { lambda: 'return id(g_knob_capture);' }
+                then: [ lambda: 'id(g_knob_delta)--;' ]
                 else:
-                  - if:   # Car: lane left; timer: fewer minutes
-                      condition: { lambda: 'return id(g_base) == 3;' }
-                      then:
-                        - lambda: 'if (id(g_car_lane) > 0) id(g_car_lane)--;'
-                        - script.execute: car_render
-                      else:
-                        - lambda: 'id(g_set_min)--; if (id(g_set_min) < 1) id(g_set_min) = 1;'
-                        - script.execute: timer_render
+                  - lambda: 'id(g_set_min)--; if (id(g_set_min) < 1) id(g_set_min) = 1;'
+                  - script.execute: timer_render
           else:
             - if:
                 condition:
@@ -1647,22 +1681,14 @@ binary_sensor:
     on_press:
       - if:
           condition:
-            lambda: 'return id(g_mode) == 0 && ((id(g_base) == 2 && !id(g_timer_active)) || (id(g_base) == 3 && id(g_game_state) == 1) || (id(g_base) == 4 && id(g_sw_state) == 1));'
+            lambda: 'return id(g_mode) == 0 && (id(g_knob_capture) || (id(g_base) == 2 && !id(g_timer_active)));'
           then:
-            - if:   # Space: ship right
-                condition: { lambda: 'return id(g_base) == 4;' }
-                then:
-                  - lambda: 'id(g_sw_px) += 18; if (id(g_sw_px) > 150) id(g_sw_px) = 150;'
-                  - script.execute: sw_render
+            - if:
+                condition: { lambda: 'return id(g_knob_capture);' }
+                then: [ lambda: 'id(g_knob_delta)++;' ]
                 else:
-                  - if:   # Car: lane right; timer: more minutes
-                      condition: { lambda: 'return id(g_base) == 3;' }
-                      then:
-                        - lambda: 'if (id(g_car_lane) < 2) id(g_car_lane)++;'
-                        - script.execute: car_render
-                      else:
-                        - lambda: 'id(g_set_min)++; if (id(g_set_min) > 180) id(g_set_min) = 180;'
-                        - script.execute: timer_render
+                  - lambda: 'id(g_set_min)++; if (id(g_set_min) > 180) id(g_set_min) = 180;'
+                  - script.execute: timer_render
           else:
             - if:
                 condition:
@@ -1890,28 +1916,22 @@ touchscreen:
               condition: { lambda: 'return id(g_gesture) == 2;' }
               then:
                 - lambda: |-
-                    int b = id(g_base);
-                    if (b == 3) id(g_game_state) = 0;
-                    if (b == 4) id(g_sw_state) = 0;
-                    id(g_base) = (b==2)?0:(b==0)?1:(b==1)?3:(b==3)?4:2;
-                - if: { condition: { lambda: 'return id(g_base)==0;' }, then: [lvgl.page.show: { id: page_home,   animation: move_left, time: 250ms }] }
-                - if: { condition: { lambda: 'return id(g_base)==1;' }, then: [lvgl.page.show: { id: page_player, animation: move_left, time: 250ms }] }
-                - if: { condition: { lambda: 'return id(g_base)==2;' }, then: [lvgl.page.show: { id: page_timer,  animation: move_left, time: 250ms }] }
-                - if: { condition: { lambda: 'return id(g_base)==3;' }, then: [lvgl.page.show: { id: page_game,   animation: move_left, time: 250ms }, script.execute: game_screen] }
-                - if: { condition: { lambda: 'return id(g_base)==4;' }, then: [lvgl.page.show: { id: page_game2,  animation: move_left, time: 250ms }, script.execute: sw_screen] }
+                    int i = 0; for (; i < id(g_order_n); i++) if (id(g_order)[i] == id(g_base)) break;
+                    if (i >= id(g_order_n)) i = 0;
+                    id(g_base) = id(g_order)[(i + 1) % id(g_order_n)];
+                    id(g_nav_anim) = 0;
+                    id(g_knob_capture) = false; id(g_knob_delta) = 0;
+                - script.execute: show_base
           - if:   # swipe → -> previous
               condition: { lambda: 'return id(g_gesture) == 3;' }
               then:
                 - lambda: |-
-                    int b = id(g_base);
-                    if (b == 3) id(g_game_state) = 0;
-                    if (b == 4) id(g_sw_state) = 0;
-                    id(g_base) = (b==0)?2:(b==2)?4:(b==4)?3:(b==3)?1:0;
-                - if: { condition: { lambda: 'return id(g_base)==0;' }, then: [lvgl.page.show: { id: page_home,   animation: move_right, time: 250ms }] }
-                - if: { condition: { lambda: 'return id(g_base)==1;' }, then: [lvgl.page.show: { id: page_player, animation: move_right, time: 250ms }] }
-                - if: { condition: { lambda: 'return id(g_base)==2;' }, then: [lvgl.page.show: { id: page_timer,  animation: move_right, time: 250ms }] }
-                - if: { condition: { lambda: 'return id(g_base)==3;' }, then: [lvgl.page.show: { id: page_game,   animation: move_right, time: 250ms }, script.execute: game_screen] }
-                - if: { condition: { lambda: 'return id(g_base)==4;' }, then: [lvgl.page.show: { id: page_game2,  animation: move_right, time: 250ms }, script.execute: sw_screen] }
+                    int i = 0; for (; i < id(g_order_n); i++) if (id(g_order)[i] == id(g_base)) break;
+                    if (i >= id(g_order_n)) i = 0;
+                    id(g_base) = id(g_order)[(i - 1 + id(g_order_n)) % id(g_order_n)];
+                    id(g_nav_anim) = 1;
+                    id(g_knob_capture) = false; id(g_knob_delta) = 0;
+                - script.execute: show_base
           # game: START/Play buttons on the game screen handle start/restart (not a global tap)
           # prev/play/next are handled by the buttons on the player screen (transport)
           - if:   # hold -> Alexa (works on every screen)
@@ -2610,6 +2630,28 @@ text_sensor:
 # LVGL - home page (clock + VA status) and PLAYER page (album art)
 ###############################################################################
 interval:
+  # Carousel: optional screens (cars/space) show themselves here when g_nav_req is set.
+  # In stage B/C these two blocks move into screens/cool-cars.yaml and screens/space-wars.yaml.
+  - interval: 50ms
+    then:
+      - if:
+          condition: { lambda: 'return id(g_nav_req) && id(g_base)==3;' }
+          then:
+            - lambda: 'id(g_nav_req) = false; id(g_game_state) = 0;'
+            - if: { condition: { lambda: 'return id(g_nav_anim)==0;' }, then: [lvgl.page.show: { id: page_game, animation: move_left,   time: 250ms }] }
+            - if: { condition: { lambda: 'return id(g_nav_anim)==1;' }, then: [lvgl.page.show: { id: page_game, animation: move_right,  time: 250ms }] }
+            - if: { condition: { lambda: 'return id(g_nav_anim)==2;' }, then: [lvgl.page.show: { id: page_game, animation: move_top,    time: 250ms }] }
+            - if: { condition: { lambda: 'return id(g_nav_anim)==3;' }, then: [lvgl.page.show: { id: page_game, animation: move_bottom, time: 250ms }] }
+            - script.execute: game_screen
+      - if:
+          condition: { lambda: 'return id(g_nav_req) && id(g_base)==4;' }
+          then:
+            - lambda: 'id(g_nav_req) = false; id(g_sw_state) = 0;'
+            - if: { condition: { lambda: 'return id(g_nav_anim)==0;' }, then: [lvgl.page.show: { id: page_game2, animation: move_left,   time: 250ms }] }
+            - if: { condition: { lambda: 'return id(g_nav_anim)==1;' }, then: [lvgl.page.show: { id: page_game2, animation: move_right,  time: 250ms }] }
+            - if: { condition: { lambda: 'return id(g_nav_anim)==2;' }, then: [lvgl.page.show: { id: page_game2, animation: move_top,    time: 250ms }] }
+            - if: { condition: { lambda: 'return id(g_nav_anim)==3;' }, then: [lvgl.page.show: { id: page_game2, animation: move_bottom, time: 250ms }] }
+            - script.execute: sw_screen
   - interval: 2s
     then:
       - lambda: |-
@@ -2642,6 +2684,7 @@ interval:
           condition: { lambda: 'return id(g_base) == 4 && id(g_sw_state) == 1;' }
           then:
             - lambda: |-
+                id(g_sw_px) += id(g_knob_delta) * 18; if (id(g_sw_px) < -150) id(g_sw_px) = -150; if (id(g_sw_px) > 150) id(g_sw_px) = 150; id(g_knob_delta) = 0;
                 int px = id(g_sw_px);
                 if (id(g_sw_inv) > 0) id(g_sw_inv)--;
                 if (id(g_exp_f) > 0) { id(g_exp_f)--; if (id(g_exp_f)==0) id(g_exp_hide)=true; }
@@ -2668,6 +2711,7 @@ interval:
                   for(int e=0;e<3;e++){ if(id(g_en_on)[e] && abs(id(g_en_x)[e]-px)<26 && abs(id(g_en_y)[e]-130)<32){ id(g_en_on)[e]=false; id(g_sw_crash)=true; break; } }
                   for(int i=0;i<2;i++){ if(id(g_eb_on)[i] && abs(id(g_eb_x)[i]-px)<18 && abs(id(g_eb_y)[i]-130)<26){ id(g_eb_on)[i]=false; id(g_sw_crash)=true; break; } }
                 }
+            - lvgl.widget.update: { id: sw_ship, x: !lambda 'return id(g_sw_px);' }
             - if: { condition: { lambda: 'return id(g_sw_crash);' }, then: [ script.execute: sw_lose ] }
             # explosion after destroying an enemy: set position, show, run the animation once
             - if:
@@ -2703,6 +2747,11 @@ interval:
           condition:
             lambda: 'return id(g_base) == 3 && id(g_game_state) == 1;'
           then:
+            - if:
+                condition: { lambda: 'return id(g_knob_capture) && id(g_knob_delta) != 0;' }
+                then:
+                  - lambda: 'id(g_car_lane) += id(g_knob_delta); if (id(g_car_lane) < 0) id(g_car_lane) = 0; if (id(g_car_lane) > 2) id(g_car_lane) = 2; id(g_knob_delta) = 0;'
+                  - script.execute: car_render
             - lambda: |-
                 id(g_o1_x) -= id(g_gspeed);
                 id(g_o2_x) -= id(g_gspeed);
