@@ -58,6 +58,10 @@ handler. It reads/writes only the shared core globals above.
 - [x] extract Cool Cars -> `screens/cool-cars.yaml`
 - [x] extract Player -> `screens/player.yaml` (volume + overlay stay in core)
 - [x] timer carousel-screen toggle -> `screens/timer.yaml` (voice timers/alarm/badge stay in core)
+- [x] new Weather screen -> `screens/weather.yaml` (radial 7-day dial, knob highlights the day;
+      forecast from the HA helper `screens/weather.ha-helper.yaml`)
+- [x] settings ownership: home-screen widget toggles moved to a "Home" submenu (core); "Display"
+      keeps only global brightness/night/screen-off
 - [x] carousel order via the `screen_order` substitution; screens register `g_present`,
       absent ones are skipped (clock kept as a safety fallback)
 - [x] dynamic settings registry: screens add their own entries (label + g_mode) at boot;
