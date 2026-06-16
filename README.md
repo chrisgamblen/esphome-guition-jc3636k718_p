@@ -9,6 +9,12 @@ microphone and an **addressable LED ring**, all driven by a single ESPHome YAML
 
 It started as "my kid needs a physical timer" and turned into a whole puck. 🙂
 
+## Demo
+
+https://github.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/raw/main/demo.mp4
+
+(If the player does not load, [download demo.mp4](demo.mp4).)
+
 ## What it does
 
 - **Voice assistant** - on-device wake word ("Alexa") via `micro_wake_word`, full
