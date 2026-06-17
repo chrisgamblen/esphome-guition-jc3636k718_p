@@ -18,7 +18,9 @@ substitutions:
   # For album art: base URL of your HA + the media_player entity (change if different)
   ha_base_url: "http://homeassistant.local:8123"
   player_entity: media_player.voice_knob_player
-  # Entities for the home screen (Display). Change if different.
+  # On-device wake word. Built-in models: alexa, okay_nabu, hey_jarvis, hey_mycroft.
+  wake_word: "alexa"
+  # Entities for the home screen (toggle each in Settings -> Home). Change if different.
   weather_entity: weather.home
   room_temp_entity: sensor.room_temperature
   room_hum_entity: sensor.room_humidity
@@ -38,8 +40,8 @@ substitutions:
   tile4_entity: light.desk_lamp
   tile4_icon: "power"
   tile4_name: "Tile 4"
+  forecast_entity: sensor.va_weekly_forecast   # weather screen forecast (HA helper, see base/screens/weather.ha-helper.yaml)
   # Carousel screen order (left-to-right). Screens not included in the build are skipped.
-  forecast_entity: sensor.va_weekly_forecast   # HA helper sensor (see base/screens/weather.ha-helper.yaml)
   screen_order: "clock,player,timer,cars,space,weather,demo"
 
 esphome:
@@ -56,7 +58,6 @@ esphome:
             id(g_order_n) = 0;
             id(g_set_n) = 0;
             id(g_set_labels) = "";
-            id(g_set_games_done) = false;
             for (int i = 0; i < 8; i++) id(g_present)[i] = false;
             id(g_present)[0] = true;   // clock is always present
             id(g_wgrp_n) = 0; id(g_wgrp_labels) = ""; id(g_wgrp_idx) = 0;
@@ -345,7 +346,7 @@ micro_wake_word:
   microphone: i2s_microphone
   vad:
   models:
-    - model: alexa
+    - model: ${wake_word}
   on_wake_word_detected:
     - lambda: |-
         id(g_va_active) = true;
@@ -480,7 +481,7 @@ globals:
   - id: g_sw_top      # top 10 (persistent)
     type: int[10]
     restore_value: yes
-  - id: g_base        # which base page: 0=clock 1=player 2=timer (swipe carousel ←/→)
+  - id: g_base        # current carousel screen id (fixed: 0=clock 1=player 2=timer 3=cars 4=space 5=weather 6=demo)
     type: int
     restore_value: no
     initial_value: '0'
@@ -560,7 +561,7 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
-  - id: g_sub_idx      # selection in the category submenu (Assistant/Games/System/Ring)
+  - id: g_sub_idx      # selection inside a settings submenu (Home/Assistant/Ring/System/Demo/Weather)
     type: int
     restore_value: no
     initial_value: '0'
@@ -670,10 +671,6 @@ globals:
   - id: g_set_labels     # newline-joined roller labels, applied at boot
     type: std::string
     restore_value: no
-  - id: g_set_games_done # guard so the shared "Games" entry is added once
-    type: bool
-    restore_value: no
-    initial_value: 'false'
   - id: g_present        # which screens registered (by base id); carousel is built from screen_order
     type: bool[8]
     restore_value: no
