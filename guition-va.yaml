@@ -76,7 +76,7 @@ esphome:
             auto ic = [](const std::string &s) -> std::string {
               if (s == "bulb" || s == "light") return "\U000f0335";
               if (s == "lamp") return "\U000f06b5";
-              if (s == "led" || s == "strip") return "\U000f07d9";
+              if (s == "led" || s == "strip") return "\U000f07d6";
               if (s == "power") return "\U000f0425";
               if (s == "plug") return "\U000f06a5";
               if (s == "switch") return "\U000f0521";
@@ -2105,7 +2105,7 @@ font:
       # smart-home icon set (reference these by name in tileN_icon)
       - "\U000f0335"
       - "\U000f06b5"
-      - "\U000f07d9"
+      - "\U000f07d6"
       - "\U000f0425"
       - "\U000f06a5"
       - "\U000f0521"
