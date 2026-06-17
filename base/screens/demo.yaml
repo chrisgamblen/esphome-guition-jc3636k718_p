@@ -36,6 +36,10 @@ esphome:
             o = id(g_wopt_n)++; id(g_wopt_group)[o] = g; id(g_wopt_label)[o] = "Demo LED"; id(g_wopt_kind)[o] = 0; id(g_wopt_ptr)[o] = &id(g_demo_led);
 
 globals:
+  - id: g_demo_bg        # background: false = black, true = white (runtime state)
+    type: bool
+    restore_value: no
+    initial_value: 'false'
   # Demo settings (declared here, registered above; the core menu reaches them by pointer).
   - id: g_demo_border    # draw a border (Settings -> Widgets -> Demo)
     type: bool

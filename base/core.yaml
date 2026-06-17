@@ -691,12 +691,7 @@ globals:
   - id: g_present        # which screens registered (by base id); carousel is built from screen_order
     type: bool[16]
     restore_value: no
-  # --- Example "demo" screen state (read by base/screens/demo.yaml) + a generic tap signal ---
-  - id: g_demo_bg        # demo background: false = black, true = white
-    type: bool
-    restore_value: no
-    initial_value: 'false'
-  - id: g_tap_seq        # bumped on every normal-mode tap; screens watch it to react
+  - id: g_tap_seq        # bumped on every normal-mode tap; screens watch it to react (shared infra)
     type: int
     restore_value: no
     initial_value: '0'
