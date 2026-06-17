@@ -45,6 +45,8 @@ Full docs live in the **[wiki](https://github.com/MichalZaniewicz/esphome-guitio
 | [Configuration](https://github.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/wiki/Configuration) | Change entities, tiles, wake word, run without Music Assistant |
 | [Troubleshooting](https://github.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/wiki/Troubleshooting) | Known issues (battery %, GPIO0 strapping, performance, the knob) |
 
+Release history: [CHANGELOG.md](CHANGELOG.md).
+
 ## Quick start
 
 1. Copy `secrets.example.yaml` → `secrets.yaml` and fill in your Wi-Fi.
