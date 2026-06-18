@@ -73,7 +73,7 @@ substitutions:
 
   # Carousel order, left to right. Reorder/remove names freely; screens you did not
   # include in "files:" below are skipped automatically.
-  screen_order: "clock,player,timer,cars,space,weather,thermostat,sensors,demo"
+  screen_order: "clock,player,timer,cars,space,snake,weather,thermostat,sensors,demo"
 
 packages:
   core:

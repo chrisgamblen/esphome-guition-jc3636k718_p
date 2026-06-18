@@ -12,6 +12,12 @@ All notable changes to this project are documented here. The format is based on
   keeps a top-10 (with its own "Reset scores" under Settings -> Widgets -> Snake). Pick it in the
   `files:` list and place it via `screen_order` like any other screen.
 
+### Fixed
+- Clock could still show UTC (off by the timezone offset) after the device had been idle/asleep,
+  if a runtime reset to UTC happened to coincide with an empty boot-time timezone snapshot. The
+  per-second timezone self-heal now re-asserts the zone from the time component itself
+  (`get_timezone()`) instead of a one-time boot capture, so a stray UTC reset can never stick.
+
 ## [2.1.3] - 2026-06-17
 
 ### Added

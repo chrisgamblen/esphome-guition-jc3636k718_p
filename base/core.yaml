@@ -2285,9 +2285,15 @@ interval:
   - interval: 1s
     then:
       # TZ self-heal: some ESPHome builds reset the device timezone to UTC at runtime (e.g. on a
-      # menu restart or when a log/API client without a TZ reconnects), so the clock briefly jumps
-      # to UTC. Re-apply our already-resolved zone every tick so it never drifts. (No-op if correct.)
-      - lambda: 'if (!id(g_tz_posix).empty()) { setenv("TZ", id(g_tz_posix).c_str(), 1); tzset(); }'
+      # menu restart or when a log/API client without a TZ reconnects), so the clock jumps to UTC.
+      # Re-assert the configured zone every tick. We read it from the time component itself
+      # (get_timezone() = the POSIX string compiled from the `timezone` substitution) rather than a
+      # one-time boot snapshot, so a stray UTC reset can never "stick" even if the boot capture was
+      # ever empty/wrong. g_tz_posix stays as a fallback. (No-op if the zone is already correct.)
+      - lambda: |-
+          std::string tz = id(ha_time).get_timezone();
+          if (tz.empty()) tz = id(g_tz_posix);
+          if (!tz.empty()) { setenv("TZ", tz.c_str(), 1); tzset(); }
       # Battery: while charging - "filling" animation; when full (≥99%) - static full icon.
       - lambda: 'if (id(g_charging)) id(g_chg_anim) = (id(g_chg_anim) + 1) % 5;'
       - script.execute: batt_render
