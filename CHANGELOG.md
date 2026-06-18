@@ -16,10 +16,12 @@ All notable changes to this project are documented here. The format is based on
   `screen_order` like any other screen.
 
 ### Fixed
-- Clock could still show UTC (off by the timezone offset) after the device had been idle/asleep,
-  if a runtime reset to UTC happened to coincide with an empty boot-time timezone snapshot. The
-  per-second timezone self-heal now re-latches the resolved zone whenever it sees a valid one (not
-  just once at boot) and re-asserts it every tick, so a stray UTC reset can no longer stick.
+- Clock stuck on UTC (off by the timezone offset). The device has no IANA timezone database, so an
+  IANA `timezone:` (e.g. `Europe/Warsaw`) depends on a compile-time conversion that fails on some
+  build hosts, leaving the clock on UTC. The `timezone` substitution now takes a POSIX TZ string
+  (Warsaw default `CET-1CEST,M3.5.0,M10.5.0/3`) which the device forces into its environment at boot
+  and re-asserts every second, independent of the time platform. An IANA name still works where the
+  conversion succeeds. Find your POSIX string at github.com/nayarsystems/posix_tz_db.
 
 ## [2.1.3] - 2026-06-17
 

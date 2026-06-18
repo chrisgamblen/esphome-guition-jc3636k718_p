@@ -12,9 +12,11 @@
 substitutions:
   name: voice-knob
   friendly_name: "Voice Knob"
-  # Clock timezone (IANA name, e.g. Europe/Warsaw, America/New_York). DST is automatic.
-  # HA does not push its zone to the device, so set yours here.
-  timezone: "Europe/Warsaw"
+  # Clock timezone. HA does not push its zone to the device, so set yours here. Prefer a POSIX TZ
+  # string (the device has no IANA database; an IANA name like "Europe/Warsaw" relies on a
+  # compile-time conversion that fails on some build hosts and leaves the clock on UTC). Warsaw
+  # shown; find yours at https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv . DST auto.
+  timezone: "CET-1CEST,M3.5.0,M10.5.0/3"
   # For album art: base URL of your HA + the media_player entity (change if different)
   ha_base_url: "http://homeassistant.local:8123"
   player_entity: media_player.voice_knob_player
@@ -170,7 +172,20 @@ esphome:
     - priority: -100
       then:
         - light.turn_on: { id: ring_light, effect: "Rainbow", brightness: 55% }   # boot splash: spin the ring while "HELLO!" shows (turned off when the splash ends)
-        - lambda: 'const char* tz = getenv("TZ"); if (tz && tz[0]) id(g_tz_posix) = tz;'   # remember the resolved POSIX zone set at setup, so the 1s interval can re-apply it if it gets reset to UTC
+        - lambda: |-
+            // The device has no IANA tz database, so the clock needs a POSIX TZ string. If the
+            // `timezone` substitution is already POSIX (e.g. "CET-1CEST,M3.5.0,M10.5.0/3"), take it
+            // verbatim and force it into the environment - on some builds the homeassistant time
+            // platform never applies the zone and the clock is stuck on UTC. If it is an IANA name
+            // (contains '/'), trust whatever the time component resolved into TZ. The 1s interval
+            // re-applies g_tz_posix so a runtime reset to UTC can't stick.
+            std::string cfg = "${timezone}";
+            if (!cfg.empty() && cfg.find('/') == std::string::npos) {
+              id(g_tz_posix) = cfg;
+            } else {
+              const char* tz = getenv("TZ"); if (tz && tz[0]) id(g_tz_posix) = tz;
+            }
+            if (!id(g_tz_posix).empty()) { setenv("TZ", id(g_tz_posix).c_str(), 1); tzset(); }
         - script.execute: night_apply    # brightness per g_bright / night mode
         - script.execute: disp_apply     # show/hide weather + temp/humidity per settings
         - script.execute: settings_build # push the dynamic settings list into the roller
@@ -2286,17 +2301,9 @@ interval:
     then:
       # TZ self-heal: some ESPHome builds reset the device timezone to UTC at runtime (e.g. on a
       # menu restart or when a log/API client without a TZ reconnects), so the clock jumps to UTC.
-      # Every tick: latch the correct POSIX zone whenever we see a good one in the environment (the
-      # time component sets it from the `timezone` substitution), then re-assert it. Because we keep
-      # re-latching, a one-time empty/UTC boot snapshot can no longer make UTC "stick" - as long as
-      # the right zone shows up once, it is remembered and restored. (No-op once it is correct.)
-      - lambda: |-
-          const char *cur = getenv("TZ");
-          if (cur && cur[0]) {
-            std::string s = cur;
-            if (s != "UTC0" && s != "UTC" && s != "GMT0") id(g_tz_posix) = s;   // remember a real zone
-          }
-          if (!id(g_tz_posix).empty()) { setenv("TZ", id(g_tz_posix).c_str(), 1); tzset(); }
+      # g_tz_posix was resolved at boot (from the `timezone` substitution, or the time component);
+      # re-assert it every tick so a stray UTC reset can't stick. (No-op once it is correct.)
+      - lambda: 'if (!id(g_tz_posix).empty()) { setenv("TZ", id(g_tz_posix).c_str(), 1); tzset(); }'
       # Battery: while charging - "filling" animation; when full (≥99%) - static full icon.
       - lambda: 'if (id(g_charging)) id(g_chg_anim) = (id(g_chg_anim) + 1) % 5;'
       - script.execute: batt_render
