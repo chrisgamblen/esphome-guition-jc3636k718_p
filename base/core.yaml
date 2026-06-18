@@ -2283,22 +2283,58 @@ text_sensor:
     id: st_tile1
     entity_id: ${tile1_entity}
     on_value:
-      - if: { condition: { lambda: 'return x == "on";' }, then: [lvgl.widget.update: { id: tile1, bg_color: 0x2A6BD4 }], else: [lvgl.widget.update: { id: tile1, bg_color: 0x242426 }] }
+      - if:
+          condition: { lambda: 'return x == "on";' }
+          then:
+            - lvgl.widget.update: { id: tile1, bg_color: 0xF5B83D, border_color: 0xFFD27A }
+            - lvgl.label.update: { id: tile1_ic, text_color: 0x231803 }
+            - lvgl.label.update: { id: tile1_lbl, text_color: 0x231803 }
+          else:
+            - lvgl.widget.update: { id: tile1, bg_color: 0x161A22, border_color: 0x2A303C }
+            - lvgl.label.update: { id: tile1_ic, text_color: 0x707A8A }
+            - lvgl.label.update: { id: tile1_lbl, text_color: 0x9AA3B0 }
   - platform: homeassistant
     id: st_tile2
     entity_id: ${tile2_entity}
     on_value:
-      - if: { condition: { lambda: 'return x == "on";' }, then: [lvgl.widget.update: { id: tile2, bg_color: 0x2A6BD4 }], else: [lvgl.widget.update: { id: tile2, bg_color: 0x242426 }] }
+      - if:
+          condition: { lambda: 'return x == "on";' }
+          then:
+            - lvgl.widget.update: { id: tile2, bg_color: 0xF5B83D, border_color: 0xFFD27A }
+            - lvgl.label.update: { id: tile2_ic, text_color: 0x231803 }
+            - lvgl.label.update: { id: tile2_lbl, text_color: 0x231803 }
+          else:
+            - lvgl.widget.update: { id: tile2, bg_color: 0x161A22, border_color: 0x2A303C }
+            - lvgl.label.update: { id: tile2_ic, text_color: 0x707A8A }
+            - lvgl.label.update: { id: tile2_lbl, text_color: 0x9AA3B0 }
   - platform: homeassistant
     id: st_tile3
     entity_id: ${tile3_entity}
     on_value:
-      - if: { condition: { lambda: 'return x == "on";' }, then: [lvgl.widget.update: { id: tile3, bg_color: 0x2A6BD4 }], else: [lvgl.widget.update: { id: tile3, bg_color: 0x242426 }] }
+      - if:
+          condition: { lambda: 'return x == "on";' }
+          then:
+            - lvgl.widget.update: { id: tile3, bg_color: 0xF5B83D, border_color: 0xFFD27A }
+            - lvgl.label.update: { id: tile3_ic, text_color: 0x231803 }
+            - lvgl.label.update: { id: tile3_lbl, text_color: 0x231803 }
+          else:
+            - lvgl.widget.update: { id: tile3, bg_color: 0x161A22, border_color: 0x2A303C }
+            - lvgl.label.update: { id: tile3_ic, text_color: 0x707A8A }
+            - lvgl.label.update: { id: tile3_lbl, text_color: 0x9AA3B0 }
   - platform: homeassistant
     id: st_tile4
     entity_id: ${tile4_entity}
     on_value:
-      - if: { condition: { lambda: 'return x == "on";' }, then: [lvgl.widget.update: { id: tile4, bg_color: 0x2A6BD4 }], else: [lvgl.widget.update: { id: tile4, bg_color: 0x242426 }] }
+      - if:
+          condition: { lambda: 'return x == "on";' }
+          then:
+            - lvgl.widget.update: { id: tile4, bg_color: 0xF5B83D, border_color: 0xFFD27A }
+            - lvgl.label.update: { id: tile4_ic, text_color: 0x231803 }
+            - lvgl.label.update: { id: tile4_lbl, text_color: 0x231803 }
+          else:
+            - lvgl.widget.update: { id: tile4, bg_color: 0x161A22, border_color: 0x2A303C }
+            - lvgl.label.update: { id: tile4_ic, text_color: 0x707A8A }
+            - lvgl.label.update: { id: tile4_lbl, text_color: 0x9AA3B0 }
   # Weather: state (rainy/sunny/...) -> MDI icon on the home screen
   - platform: homeassistant
     id: wx_state
@@ -2982,7 +3018,7 @@ lvgl:
               - label: { align: CENTER, text: "", text_font: montserrat_22, text_color: 0xFF6B60 }
     # --- CONTROLS page (swipe up): 4 configurable HA toggles (entity/icon/name in substitutions) ---
     - id: page_controls
-      bg_color: 0x000000
+      bg_color: 0x0A0E16
       widgets:
         - button:
             id: tile1
@@ -2992,14 +3028,15 @@ lvgl:
             width: 110
             height: 110
             radius: 22
-            bg_color: 0x242426
+            bg_color: 0x161A22
             bg_opa: COVER
-            border_width: 0
+            border_width: 2
+            border_color: 0x2A303C
             on_click:
               - homeassistant.action: { action: homeassistant.toggle, data: { entity_id: "${tile1_entity}" } }
             widgets:
-              - label: { id: tile1_ic, align: CENTER, y: -16, text: "", text_font: icons34, text_color: 0xFFFFFF }
-              - label: { align: CENTER, y: 26, width: 100, long_mode: wrap, text_align: CENTER, text: "${tile1_name}", text_font: font_artist, text_color: 0xFFFFFF }
+              - label: { id: tile1_ic, align: CENTER, y: -16, text: "", text_font: icons34, text_color: 0x707A8A }
+              - label: { id: tile1_lbl, align: CENTER, y: 26, width: 100, long_mode: wrap, text_align: CENTER, text: "${tile1_name}", text_font: font_artist, text_color: 0x9AA3B0 }
         - button:
             id: tile2
             align: CENTER
@@ -3008,14 +3045,15 @@ lvgl:
             width: 110
             height: 110
             radius: 22
-            bg_color: 0x242426
+            bg_color: 0x161A22
             bg_opa: COVER
-            border_width: 0
+            border_width: 2
+            border_color: 0x2A303C
             on_click:
               - homeassistant.action: { action: homeassistant.toggle, data: { entity_id: "${tile2_entity}" } }
             widgets:
-              - label: { id: tile2_ic, align: CENTER, y: -16, text: "", text_font: icons34, text_color: 0xFFFFFF }
-              - label: { align: CENTER, y: 26, width: 100, long_mode: wrap, text_align: CENTER, text: "${tile2_name}", text_font: font_artist, text_color: 0xFFFFFF }
+              - label: { id: tile2_ic, align: CENTER, y: -16, text: "", text_font: icons34, text_color: 0x707A8A }
+              - label: { id: tile2_lbl, align: CENTER, y: 26, width: 100, long_mode: wrap, text_align: CENTER, text: "${tile2_name}", text_font: font_artist, text_color: 0x9AA3B0 }
         - button:
             id: tile3
             align: CENTER
@@ -3024,14 +3062,15 @@ lvgl:
             width: 110
             height: 110
             radius: 22
-            bg_color: 0x242426
+            bg_color: 0x161A22
             bg_opa: COVER
-            border_width: 0
+            border_width: 2
+            border_color: 0x2A303C
             on_click:
               - homeassistant.action: { action: homeassistant.toggle, data: { entity_id: "${tile3_entity}" } }
             widgets:
-              - label: { id: tile3_ic, align: CENTER, y: -16, text: "", text_font: icons34, text_color: 0xFFFFFF }
-              - label: { align: CENTER, y: 26, width: 100, long_mode: wrap, text_align: CENTER, text: "${tile3_name}", text_font: font_artist, text_color: 0xFFFFFF }
+              - label: { id: tile3_ic, align: CENTER, y: -16, text: "", text_font: icons34, text_color: 0x707A8A }
+              - label: { id: tile3_lbl, align: CENTER, y: 26, width: 100, long_mode: wrap, text_align: CENTER, text: "${tile3_name}", text_font: font_artist, text_color: 0x9AA3B0 }
         - button:
             id: tile4
             align: CENTER
@@ -3040,11 +3079,12 @@ lvgl:
             width: 110
             height: 110
             radius: 22
-            bg_color: 0x242426
+            bg_color: 0x161A22
             bg_opa: COVER
-            border_width: 0
+            border_width: 2
+            border_color: 0x2A303C
             on_click:
               - homeassistant.action: { action: homeassistant.toggle, data: { entity_id: "${tile4_entity}" } }
             widgets:
-              - label: { id: tile4_ic, align: CENTER, y: -16, text: "", text_font: icons34, text_color: 0xFFFFFF }
-              - label: { align: CENTER, y: 26, width: 100, long_mode: wrap, text_align: CENTER, text: "${tile4_name}", text_font: font_artist, text_color: 0xFFFFFF }
+              - label: { id: tile4_ic, align: CENTER, y: -16, text: "", text_font: icons34, text_color: 0x707A8A }
+              - label: { id: tile4_lbl, align: CENTER, y: 26, width: 100, long_mode: wrap, text_align: CENTER, text: "${tile4_name}", text_font: font_artist, text_color: 0x9AA3B0 }
