@@ -460,7 +460,7 @@ interval:
                       int nh = (head + 1) % {POOL};
                       id(g_sn_tx)[nh] = hx; id(g_sn_ty)[nh] = hy;
                       id(g_sn_head) = nh; id(g_sn_add) = nh;
-                      if (id(g_sn_grow) > 0 && id(g_sn_len) < {POOL}) {{ id(g_sn_grow)--; id(g_sn_len)++; id(g_sn_del) = -1; }}
+                      if (id(g_sn_grow) > 0 && id(g_sn_len) < {POOL - 1}) {{ id(g_sn_grow)--; id(g_sn_len)++; id(g_sn_del) = -1; }}   // cap at POOL-1: the ring needs one free slot or add/drop collide
                       else {{ if (id(g_sn_grow) > 0) id(g_sn_grow)--; id(g_sn_del) = (head - id(g_sn_len) + 1 + {M}) % {POOL}; }}
                     }}
                   }}
