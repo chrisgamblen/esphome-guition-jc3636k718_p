@@ -142,7 +142,7 @@ script:
   - id: sw_over
     then:
       - lambda: |-
-          id(g_sw_state)=2; id(g_knob_capture)=false;
+          id(g_sw_state)=2;   // sw_screen keeps the knob captured on game over (no volume)
           int s=id(g_sw_score);
           if (s>id(g_sw_best)) id(g_sw_best)=s;
           for (int i=0;i<10;i++){ if(s>id(g_sw_top)[i]){ for(int j=9;j>i;j--) id(g_sw_top)[j]=id(g_sw_top)[j-1]; id(g_sw_top)[i]=s; break; } }
@@ -154,6 +154,8 @@ script:
       - script.execute: sw_screen
   - id: sw_screen   # 0=menu 1=playing 2=game over 3=how-to 4=scores
     then:
+      # knob steers only during play + game over -> capture it there (block volume), free it in menu/how-to/scores
+      - lambda: 'id(g_knob_capture) = (id(g_sw_state) == 1 || id(g_sw_state) == 2);'
       - lvgl.widget.hide: sw_bg
       - lvgl.widget.hide: sw_logo
       - lvgl.widget.hide: sw_ship

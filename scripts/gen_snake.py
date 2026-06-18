@@ -271,7 +271,7 @@ script:
   - id: sn_over
     then:
       - lambda: |-
-          id(g_sn_state) = 2; id(g_knob_capture) = false;
+          id(g_sn_state) = 2;   // sn_screen keeps the knob captured on game over (no volume)
           int s = id(g_sn_score);
           if (s > id(g_sn_best)) id(g_sn_best) = s;
           for (int i = 0; i < 10; i++) {{
@@ -285,6 +285,8 @@ script:
   # Show the right widgets for the current state (mirrors cool-cars' game_screen).
   - id: sn_screen
     then:
+      # knob steers only during play + game over -> capture it there (block volume), free it in menu/how-to/scores
+      - lambda: 'id(g_knob_capture) = (id(g_sn_state) == 1 || id(g_sn_state) == 2);'
       # 1) hide everything
       - lvgl.widget.hide: sn_field
       - script.execute: sn_clear
@@ -327,6 +329,7 @@ script:
       - if:   # GAME OVER
           condition: {{ lambda: 'return id(g_sn_state) == 2;' }}
           then:
+            - lvgl.widget.show: sn_field
             - lvgl.widget.show: lbl_sn_over
             - lvgl.widget.show: lbl_sn_rec
             - lvgl.widget.show: btn_sn_replay
@@ -336,6 +339,7 @@ script:
       - if:   # HOW TO PLAY
           condition: {{ lambda: 'return id(g_sn_state) == 3;' }}
           then:
+            - lvgl.widget.show: sn_field
             - lvgl.widget.show: lbl_sn_howto_t
             - lvgl.widget.show: sn_b1
             - lvgl.widget.show: sn_b2
@@ -349,6 +353,7 @@ script:
       - if:   # SCORES (top 10)
           condition: {{ lambda: 'return id(g_sn_state) == 4;' }}
           then:
+            - lvgl.widget.show: sn_field
             - lvgl.widget.show: lbl_sn_scores_t
             - lvgl.widget.show: lbl_sn_scores1
             - lvgl.widget.show: lbl_sn_scores2
@@ -380,7 +385,7 @@ interval:
       - if:
           condition: {{ lambda: 'return id(g_nav_req) && id(g_base)==9;' }}
           then:
-            - lambda: 'id(g_nav_req) = false; id(g_sn_state) = 0; id(g_knob_capture) = false;'
+            - lambda: 'id(g_nav_req) = false; id(g_sn_state) = 0; id(g_knob_delta) = 0;'   # enter at the menu; sn_screen frees the knob (volume works in menu)
             - if: {{ condition: {{ lambda: 'return id(g_nav_anim)==0;' }}, then: [lvgl.page.show: {{ id: page_snake, animation: move_left,   time: 250ms }}] }}
             - if: {{ condition: {{ lambda: 'return id(g_nav_anim)==1;' }}, then: [lvgl.page.show: {{ id: page_snake, animation: move_right,  time: 250ms }}] }}
             - if: {{ condition: {{ lambda: 'return id(g_nav_anim)==2;' }}, then: [lvgl.page.show: {{ id: page_snake, animation: move_top,    time: 250ms }}] }}

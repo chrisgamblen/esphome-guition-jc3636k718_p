@@ -15,13 +15,18 @@ All notable changes to this project are documented here. The format is based on
   numbered-badge layout as the other games. Pick it in the `files:` list and place it via
   `screen_order` like any other screen.
 
+### Changed
+- In all games the knob now controls volume on the menu, scores and how-to screens, and is captured
+  (no volume change) only while playing and on the game-over screen - so you can't nudge the volume
+  mid-game or right after a crash, but the knob is free everywhere else.
+
 ### Fixed
 - Clock stuck on UTC (off by the timezone offset). The device has no IANA timezone database, so an
-  IANA `timezone:` (e.g. `Europe/Warsaw`) depends on a compile-time conversion that fails on some
-  build hosts, leaving the clock on UTC. The `timezone` substitution now takes a POSIX TZ string
-  (Warsaw default `CET-1CEST,M3.5.0,M10.5.0/3`) which the device forces into its environment at boot
-  and re-asserts every second, independent of the time platform. An IANA name still works where the
-  conversion succeeds. Find your POSIX string at github.com/nayarsystems/posix_tz_db.
+  IANA `timezone:` (e.g. `Europe/Warsaw`) depended on a compile-time conversion that fails on some
+  build hosts, and the homeassistant time platform didn't apply the zone at runtime either. Core now
+  maps common IANA names to their POSIX form itself and forces that into the device environment at
+  boot, re-asserting it every second - so a friendly `timezone: "Europe/Warsaw"` just works. A zone
+  not in the table can still be given as a POSIX string directly (github.com/nayarsystems/posix_tz_db).
 
 ## [2.1.3] - 2026-06-17
 

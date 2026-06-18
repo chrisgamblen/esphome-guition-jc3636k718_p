@@ -122,6 +122,8 @@ script:
   # Shows the correct game screen per state (0=menu 1=playing 2=game over 3=how-to 4=scores)
   - id: game_screen
     then:
+      # knob steers only during play + game over -> capture it there (block volume), free it in menu/how-to/scores
+      - lambda: 'id(g_knob_capture) = (id(g_game_state) == 1 || id(g_game_state) == 2);'
       # 1) hide everything
       - lvgl.widget.hide: road_bg
       - lvgl.widget.hide: logo_bg
@@ -297,7 +299,7 @@ script:
   - id: game_crash   # GAME OVER (0 lives) - save score + insert into top 10
     then:
       - lambda: |-
-          id(g_game_state) = 2; id(g_knob_capture) = false;
+          id(g_game_state) = 2;   // game_screen keeps the knob captured on game over (no volume)
           int s = id(g_score);
           if (s > id(g_best)) id(g_best) = s;
           for (int i = 0; i < 10; i++) {
