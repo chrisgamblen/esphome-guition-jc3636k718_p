@@ -6,28 +6,13 @@ All notable changes to this project are documented here. The format is based on
 ## [2.1.4] - 2026-06-18
 
 ### Added
-- **Snake 360 screen** (optional). A smooth-steering 360-degree snake: turn the knob to steer the head's heading
-  and the body trails behind it, across the whole round screen bounded by a green ring (the snake
-  passes under the score). Eat fruit to grow and score - up to 3 fruit (random sprites from a set
-  of 12) are kept on the board and replenished over time, sooner when only one is left. Up to two
-  skull hazards appear for a while and end the game if eaten; hitting the ring or your own tail also
-  ends it. It speeds up as you score and keeps a top-10 (with its own "Reset scores" under Settings
-  -> Widgets -> Snake). Full-screen menu logo and a green UI palette to match; How-to uses the same
-  numbered-badge layout as the other games. Pick it in the `files:` list and place it via
-  `screen_order` like any other screen.
+- **Snake 360** (optional carousel screen). Steer a 360-degree snake with the knob; eat fruit (up to 3 at once) to grow, avoid the ring, your tail and up to two skulls. Keeps a top-10.
 
 ### Changed
-- In all games the knob now controls volume on the menu, scores and how-to screens, and is captured
-  (no volume change) only while playing and on the game-over screen - so you can't nudge the volume
-  mid-game or right after a crash, but the knob is free everywhere else.
+- In games the knob only changes volume on the menu/scores/how-to screens; while playing and on game-over it steers (no accidental volume changes).
 
 ### Fixed
-- Clock stuck on UTC (off by the timezone offset). The device has no IANA timezone database, so an
-  IANA `timezone:` (e.g. `Europe/Warsaw`) depended on a compile-time conversion that fails on some
-  build hosts, and the homeassistant time platform didn't apply the zone at runtime either. Core now
-  maps common IANA names to their POSIX form itself and forces that into the device environment at
-  boot, re-asserting it every second - so a friendly `timezone: "Europe/Warsaw"` just works. A zone
-  not in the table can still be given as a POSIX string directly (github.com/nayarsystems/posix_tz_db).
+- Clock could stay on UTC: the `timezone` substitution now maps common IANA names (e.g. `Europe/Warsaw`) to the POSIX form the device needs. Use a POSIX string for unlisted zones.
 
 ## [2.1.3] - 2026-06-17
 
