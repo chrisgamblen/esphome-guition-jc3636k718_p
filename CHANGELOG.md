@@ -6,12 +6,13 @@ All notable changes to this project are documented here. The format is based on
 ## [2.1.4] - 2026-06-18
 
 ### Added
-- **Snake screen** (optional). The classic on a 24x24 grid that fits the round display: turn the
-  knob to steer (a rotation is one quarter-turn, so you can never reverse into yourself), eat fruit
-  to grow and score, and avoid the walls and your own tail. The food is one of 12 random fruit
-  sprites; a skull hazard blinks in and out every few seconds and ends the game if you eat it. It
-  speeds up as you score and keeps a top-10 (with its own "Reset scores" under Settings -> Widgets
-  -> Snake). Full-screen menu logo and a green UI palette to match; How-to uses the same
+- **Snake screen** (optional). A free 360-degree snake: turn the knob to steer the head's heading
+  and the body trails behind it, across the whole round screen bounded by a green ring (the snake
+  passes under the score). Eat fruit to grow and score - up to 3 fruit (random sprites from a set
+  of 12) are kept on the board and replenished over time, sooner when only one is left. Up to two
+  skull hazards appear for a while and end the game if eaten; hitting the ring or your own tail also
+  ends it. It speeds up as you score and keeps a top-10 (with its own "Reset scores" under Settings
+  -> Widgets -> Snake). Full-screen menu logo and a green UI palette to match; How-to uses the same
   numbered-badge layout as the other games. Pick it in the `files:` list and place it via
   `screen_order` like any other screen.
 
