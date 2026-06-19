@@ -1,0 +1,114 @@
+# ═════════════════════════════════════════════════════════════════════════════
+#  DEMO WATCHFACE  -  a minimal, heavily-commented template. Copy this file to
+#  base/watchfaces/<your-name>.yaml, change the 4 spots marked  >>> EDIT <<<  and
+#  you have your own home-screen look.
+#
+#  How watchfaces work (same idea as the carousel screens):
+#   - The home base (the clock area) can show one of several "faces".
+#   - "Classic" is built into core and is always the fallback (face id 0).
+#   - Every OTHER face is an optional file like this one, switched on by adding it
+#     to the `files:` list in your thin config, and chosen at runtime in
+#     Settings > Home > Watchface (turn the knob to preview, tap to keep).
+#   - Core can't reference a page that might not be compiled in, so each face
+#     SHOWS ITSELF: core just raises a flag (g_wf_req) and the active face's own
+#     interval calls lvgl.page.show. Same trick the screens use (g_nav_req).
+#
+#  Everything you can read from core (no extra entities needed):
+#     id(ha_time).now()        - current time (ESPTime)         -> strftime("%H"), etc.
+#     id(wx_temp).state        - outdoor temperature (float)    + .has_state()
+#     id(room_temp).state      - room temperature (float)
+#     id(room_hum).state       - room humidity (float)
+#     id(g_nf_glyph)           - weather icon glyph (std::string, MDI in font icons34)
+#     id(g_nf_cond)            - weather condition text, UPPERCASE
+#     id(g_batt) / id(g_charging) - battery % (int, -1 = unknown) / charging (bool)
+#     id(g_show_weather) / id(g_show_climate) - the Display toggles (bool)
+#  Fonts already provided by core: montserrat_18/48, font_med, font_artist,
+#     font_sel, icons18, icons34. Define your own under `font:` if you want more.
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ── 1. REGISTER the face at boot ──────────────────────────────────────────────
+# Pick a UNIQUE id (0 = Classic, 1 = Neon are taken; use 2, 3, ...). The name is
+# what shows in the picker. Priority 655 runs after core but before the boot
+# finalize that validates the saved choice.
+esphome:
+  on_boot:
+    - priority: 655
+      then:
+        - lambda: 'id(g_wf_present)[2] = true; id(g_wf_name)[2] = "Demo";'   # >>> EDIT <<< id + name
+
+# ── 2. (optional) your own fonts ──────────────────────────────────────────────
+# This demo reuses core's fonts, so nothing here. Add a `font:` block if needed.
+
+# ── 3. THE PAGE ───────────────────────────────────────────────────────────────
+# A full-screen page. Give it a unique id (page_home_<name>) and unique widget ids.
+lvgl:
+  pages:
+    - id: page_home_demo                # >>> EDIT <<< unique page id
+      bg_color: 0x000000
+      widgets:
+        - label:                        # big centered clock
+            id: dwf_time
+            align: CENTER
+            y: -16
+            text: "00:00"
+            text_font: montserrat_48
+            text_color: 0xFFFFFF
+        - label:                        # small date under it
+            id: dwf_date
+            align: CENTER
+            y: 30
+            text: ""
+            text_font: font_med
+            text_color: 0x6f9a92
+
+# ── 4. INTERVALS: self-show + refresh ─────────────────────────────────────────
+interval:
+  # Self-show: core raises g_wf_req when it wants the home base shown. If we are
+  # the active face, show OUR page (and render once so it isn't blank), then clear
+  # the flag. Keep the id check (== 2) matching the one you registered above.
+  - interval: 50ms
+    then:
+      - if:
+          condition: { lambda: 'return id(g_wf_req) && id(g_watchface) == 2;' }   # >>> EDIT <<< id
+          then:
+            - lambda: 'id(g_wf_req) = false;'
+            - lvgl.page.show: { id: page_home_demo, animation: fade_in, time: 250ms }
+            - script.execute: demo_render
+  # Refresh once a second while we are the active home face.
+  - interval: 1s
+    then:
+      - if:
+          condition: { lambda: 'return id(g_watchface) == 2 && id(g_base) == 0;' }  # >>> EDIT <<< id
+          then: [ script.execute: demo_render ]
+
+# ── 5. RENDER: fill your widgets from core's data ─────────────────────────────
+script:
+  - id: demo_render                     # >>> EDIT <<< unique script id
+    then:
+      # Time - HH:MM (24h). Use "%I:%M %p" for 12-hour.
+      - lvgl.label.update:
+          id: dwf_time
+          text: !lambda 'return id(ha_time).now().is_valid() ? id(ha_time).now().strftime("%H:%M") : std::string("00:00");'
+      # Date - e.g. "Mon 19 Jun"
+      - lvgl.label.update:
+          id: dwf_date
+          text: !lambda |-
+            auto t = id(ha_time).now();
+            if (!t.is_valid()) return std::string("");
+            static const char* d[8] = {"","Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+            std::string day = (t.day_of_week >= 1 && t.day_of_week <= 7) ? std::string(d[t.day_of_week]) : std::string("");
+            return day + t.strftime(" %d %b");
+      # ── Want more? Uncomment and add widgets above, then fill them here. ──
+      # Example: show room temperature (respecting the "Show climate" toggle)
+      #   - lvgl.label.update:
+      #       id: dwf_temp
+      #       text: !lambda |-
+      #         if (!id(g_show_climate) || !id(room_temp).has_state()) return std::string("");
+      #         char b[12]; snprintf(b, sizeof(b), "%.1f\xC2\xB0", id(room_temp).state); return std::string(b);
+      # Example: weather icon (font icons34) + outdoor temp
+      #   - lvgl.label.update: { id: dwf_wx, text: !lambda 'return id(g_show_weather) ? id(g_nf_glyph) : std::string("");' }
+
+# ── 6. TURN IT ON ─────────────────────────────────────────────────────────────
+# Add this file to the `files:` list in your thin config:
+#     - base/watchfaces/demo.yaml
+# then rebuild and pick "Demo" in Settings > Home > Watchface.
