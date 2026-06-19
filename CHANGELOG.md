@@ -3,6 +3,17 @@
 All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.2.1] - 2026-06-19
+
+### Added
+- **Minecraft watchface** - a blocky scene with a day/night cycle (sun by day, moon + stars by night), a textured grass/dirt ground, a pixel-font clock, and a heart bar for the battery. Optional, like the other faces.
+
+### Changed
+- Watchfaces redraw the clock only when the minute changes (not every second), so they stay light; faces slide in by swipe direction instead of cross-fading.
+
+### Fixed
+- Silenced the font "missing glyphs" warnings (pixel font uses an explicit glyph list; the Roboto faces use `ignore_missing_glyphs`).
+
 ## [2.2.0] - 2026-06-19
 
 ### Added

@@ -8,7 +8,7 @@
 #  pixel digits, the day/night swap) only run when the minute actually changes or the
 #  day/night state flips - so it stays light. No animated clouds.
 #
-#  Assets fetched via raw GitHub URLs on the BETA branch; flip /beta/ -> /main/ at merge.
+#  Assets (font + sprites) are fetched from this repo's /main/ raw GitHub URLs at compile time.
 #  Watchface contract: see base/watchfaces/demo.yaml.
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -25,20 +25,20 @@ globals:
   - { id: g_mc_upd_night,  type: bool, restore_value: no, initial_value: 'false' }
 
 font:
-  - file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/fonts/pixel-font.ttf
+  - file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/main/assets/fonts/pixel-font.ttf
     id: mc_font_big
     size: 78
     glyphs: "0123456789:"
-  - file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/fonts/pixel-font.ttf
+  - file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/main/assets/fonts/pixel-font.ttf
     id: mc_font_sm
     size: 26
     glyphs: " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"   # date only (uppercased) - no GF_Latin_Core, avoids missing-glyph warnings
 
 image:
-  - { id: img_mc_ground, file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/sprites/minecraft/ground.png, type: RGB565 }
-  - { id: img_mc_sun,    file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/sprites/minecraft/sun.png,    type: RGB565, transparency: alpha_channel }
-  - { id: img_mc_moon,   file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/sprites/minecraft/moon.png,   type: RGB565, transparency: alpha_channel }
-  - { id: img_mc_flower, file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/sprites/minecraft/flower.png, type: RGB565, transparency: alpha_channel }
+  - { id: img_mc_ground, file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/main/assets/sprites/minecraft/ground.png, type: RGB565 }
+  - { id: img_mc_sun,    file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/main/assets/sprites/minecraft/sun.png,    type: RGB565, transparency: alpha_channel }
+  - { id: img_mc_moon,   file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/main/assets/sprites/minecraft/moon.png,   type: RGB565, transparency: alpha_channel }
+  - { id: img_mc_flower, file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/main/assets/sprites/minecraft/flower.png, type: RGB565, transparency: alpha_channel }
 
 lvgl:
   pages:

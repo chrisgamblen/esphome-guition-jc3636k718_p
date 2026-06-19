@@ -58,11 +58,11 @@ Everything is navigated with **swipes + taps on the screen** and the **rotary kn
 
 ## Watchfaces
 
-The home screen has a **selectable look**. Open **Settings → Home → Watchface** and the knob previews each face live, full-screen - tap to keep. **Classic** is built in; **Neon** and a heavily-commented **Demo** template are optional files you switch on in your config, and you can copy Demo to build your own (see [Configuration](https://github.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/wiki/Configuration)).
+The home screen has a **selectable look**. Open **Settings → Home → Watchface** and the knob previews each face live, full-screen - tap to keep. **Classic** is built in; **Neon** (big neon digits), **Minecraft** (a blocky day/night scene) and a heavily-commented **Demo** template are optional files you switch on in your config, and you can copy Demo to build your own (see [Configuration](https://github.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/wiki/Configuration)).
 
-| Classic (built-in) | Neon (optional) | Demo (template) |
-|:---:|:---:|:---:|
-| <img src="assets/screens/home.png" width="150"> | <img src="assets/screens/watchface-neon.png" width="150"> | <img src="assets/screens/watchface-demo.png" width="150"> |
+| Classic (built-in) | Neon | Minecraft | Demo (template) |
+|:---:|:---:|:---:|:---:|
+| <img src="assets/screens/home.png" width="150"> | <img src="assets/screens/watchface-neon.png" width="150"> | <img src="assets/screens/watchface-minecraft.png" width="150"> | <img src="assets/screens/watchface-demo.png" width="150"> |
 
 ## Documentation
 
