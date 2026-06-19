@@ -1,0 +1,103 @@
+# ═════════════════════════════════════════════════════════════════════════════
+#  MINECRAFT watchface (optional, id 3). A blocky scene: sky + grass/dirt ground,
+#  pixel-font time with the classic drop shadow, a pixel sun + outdoor temp, and a
+#  Minecraft-style heart bar for the battery. Enable in the thin config's files: list,
+#  pick it in Settings > Home screen > Watchface.
+#
+#  Built from the watchface contract (see base/watchfaces/demo.yaml for the commented
+#  template): self-registers at boot, self-shows on g_wf_req, renders itself each second.
+# ═════════════════════════════════════════════════════════════════════════════
+
+esphome:
+  on_boot:
+    - priority: 655
+      then:
+        - lambda: 'id(g_wf_present)[3] = true; id(g_wf_name)[3] = "Minecraft";'
+
+font:
+  # Pixelify Sans = a clean pixel font (Google Fonts) - reads "Minecraft-y"
+  - file: { type: gfonts, family: "Pixelify Sans", weight: 700 }
+    id: mc_font_big
+    size: 84
+    glyphs: "0123456789:"
+  - file: { type: gfonts, family: "Pixelify Sans", weight: 600 }
+    id: mc_font_sm
+    size: 22
+    glyphsets: [GF_Latin_Core]
+
+lvgl:
+  pages:
+    - id: page_home_mc
+      bg_color: 0x5A9BD4          # day sky
+      widgets:
+        # ── ground (drawn first, behind everything) - overflows the round edges ──
+        - obj: { id: mc_dirt,  x: -35, y: 250, width: 430, height: 160, bg_color: 0x6F4E34, bg_opa: COVER, radius: 0, border_width: 0, clickable: false, scrollable: false }
+        - obj: { id: mc_grass, x: -35, y: 232, width: 430, height: 20,  bg_color: 0x6DB23B, bg_opa: COVER, radius: 0, border_width: 0, clickable: false, scrollable: false }
+        - obj: { id: mc_spot1, x: 70,  y: 300, width: 16, height: 16,   bg_color: 0x553B26, bg_opa: COVER, radius: 0, border_width: 0, clickable: false, scrollable: false }
+        - obj: { id: mc_spot2, x: 180, y: 344, width: 16, height: 16,   bg_color: 0x553B26, bg_opa: COVER, radius: 0, border_width: 0, clickable: false, scrollable: false }
+        - obj: { id: mc_spot3, x: 262, y: 304, width: 16, height: 16,   bg_color: 0x553B26, bg_opa: COVER, radius: 0, border_width: 0, clickable: false, scrollable: false }
+        # ── sky decor: blocky clouds + a pixel sun ──
+        - obj: { id: mc_cloud1, x: 40, y: 58, width: 58, height: 16, bg_color: 0xEFF4FB, bg_opa: COVER, radius: 0, border_width: 0, clickable: false, scrollable: false }
+        - obj: { id: mc_cloud2, x: 30, y: 76, width: 40, height: 14, bg_color: 0xEFF4FB, bg_opa: COVER, radius: 0, border_width: 0, clickable: false, scrollable: false }
+        - obj: { id: mc_sun, align: TOP_RIGHT, x: -42, y: 42, width: 44, height: 44, bg_color: 0xF6E27A, bg_opa: COVER, radius: 0, border_width: 0, clickable: false, scrollable: false }
+        - label: { id: mc_sun_temp, align: TOP_RIGHT, x: -96, y: 53, text: "--°", text_font: mc_font_sm, text_color: 0x16314A }
+        # ── time: a dark shadow label behind + white in front (the Minecraft look) ──
+        - label: { id: mc_time_sh, align: CENTER, x: 4,  y: -40, text: "00:00", text_font: mc_font_big, text_color: 0x2B4258 }
+        - label: { id: mc_time,    align: CENTER, x: 0,  y: -44, text: "00:00", text_font: mc_font_big, text_color: 0xFFFFFF }
+        - label: { id: mc_date,    align: CENTER, x: 0,  y: 16,  text: "",      text_font: mc_font_sm,  text_color: 0xEAF2FB }
+        # ── battery as a Minecraft heart bar (HUD) ──
+        - label: { id: mc_hearts,  align: CENTER, x: 0,  y: 44,  text: "",      text_font: icons18,     text_color: 0xE2453F }
+
+interval:
+  - interval: 50ms
+    then:
+      - if:
+          condition: { lambda: 'return id(g_wf_req) && id(g_watchface) == 3;' }
+          then:
+            - lambda: 'id(g_wf_req) = false;'
+            - lvgl.page.show: { id: page_home_mc, animation: fade_in, time: 250ms }
+            - script.execute: mc_render
+  - interval: 1s
+    then:
+      - if:
+          condition: { lambda: 'return id(g_watchface) == 3 && id(g_base) == 0;' }
+          then: [ script.execute: mc_render ]
+
+script:
+  - id: mc_render
+    then:
+      - lvgl.label.update: { id: mc_time,    text: !lambda 'return id(ha_time).now().is_valid() ? id(ha_time).now().strftime("%H:%M") : std::string("00:00");' }
+      - lvgl.label.update: { id: mc_time_sh, text: !lambda 'return id(ha_time).now().is_valid() ? id(ha_time).now().strftime("%H:%M") : std::string("00:00");' }
+      - lvgl.label.update:
+          id: mc_date
+          text: !lambda |-
+            auto t = id(ha_time).now();
+            if (!t.is_valid()) return std::string("");
+            static const char* d[8] = {"","SUN","MON","TUE","WED","THU","FRI","SAT"};
+            std::string day = (t.day_of_week >= 1 && t.day_of_week <= 7) ? std::string(d[t.day_of_week]) : std::string("");
+            std::string s = day + t.strftime(" %d %b");
+            for (auto &c : s) { if (c >= 'a' && c <= 'z') c -= 32; }
+            return s;
+      # Weather (sun block + outdoor temp) obeys the Show-weather toggle
+      - if:
+          condition: { lambda: 'return id(g_show_weather);' }
+          then:
+            - lvgl.widget.show: mc_sun
+            - lvgl.widget.show: mc_sun_temp
+            - lvgl.label.update:
+                id: mc_sun_temp
+                text: !lambda |-
+                  if (!id(wx_temp).has_state()) return std::string("--°");
+                  char b[10]; snprintf(b, sizeof(b), "%d°", (int) roundf(id(wx_temp).state)); return std::string(b);
+          else:
+            - lvgl.widget.hide: mc_sun
+            - lvgl.widget.hide: mc_sun_temp
+      # Battery -> heart bar (5 hearts, each ~20%)
+      - lvgl.label.update:
+          id: mc_hearts
+          text: !lambda |-
+            int p = id(g_batt);
+            if (p < 0) return std::string("");
+            int n = (p + 10) / 20; if (n < 0) n = 0; if (n > 5) n = 5;
+            std::string s; for (int i = 0; i < n; i++) s += "󰋑";
+            return s;
