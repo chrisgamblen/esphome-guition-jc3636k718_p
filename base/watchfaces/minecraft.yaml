@@ -1,7 +1,7 @@
 # ═════════════════════════════════════════════════════════════════════════════
 #  MINECRAFT watchface (optional, id 3). A blocky scene: sky + a real textured
-#  grass/dirt ground (built from the game's grass_block_side + dirt textures), the
-#  Minecraft font for the time (with the classic drop shadow), a pixel sun + outdoor
+#  grass/dirt ground (built from grass_block_side + dirt textures), a blocky pixel font
+#  (pixel-font.ttf) for the time (with the classic drop shadow), a pixel sun + outdoor
 #  temp, and a Minecraft-style heart bar for the battery.
 #
 #  Assets (font + ground image) are fetched from this repo at compile time via raw
@@ -16,11 +16,11 @@ esphome:
         - lambda: 'id(g_wf_present)[3] = true; id(g_wf_name)[3] = "Minecraft";'
 
 font:
-  - file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/fonts/Minecraft.ttf
+  - file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/fonts/pixel-font.ttf
     id: mc_font_big
     size: 78
     glyphs: "0123456789:"
-  - file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/fonts/Minecraft.ttf
+  - file: https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/fonts/pixel-font.ttf
     id: mc_font_sm
     size: 26
     glyphsets: [GF_Latin_Core]
