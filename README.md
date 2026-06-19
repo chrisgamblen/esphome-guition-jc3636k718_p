@@ -28,7 +28,7 @@ It started as "my kid needs a physical timer" and turned into a whole puck. 🙂
 - **Timers** - set by knob or by voice; big countdown with a depleting ring,
   pause/stop, and an alarm (sound + on-screen + LED) when it finishes.
 - **Device control** - a tiles screen toggling your lights/switches.
-- **Home screen** - clock, date, battery, weather + room temp/humidity.
+- **Home screen** - clock, date, battery, weather + room temp/humidity, with a **selectable watchface** look (Classic, Neon, or your own).
 - **More screens** (all optional, knob-driven) - a weather forecast dial, a thermostat for
   any `climate` entity, and a configurable multi-sensor glance.
 - **LED ring** - controllable from HA *and* reactive: assistant (comet/spinner/wave),
@@ -41,7 +41,7 @@ Everything is navigated with **swipes + taps on the screen** and the **rotary kn
 
 | Screen | View |
 |:---:|---|
-| <img src="assets/screens/home.png" width="170"> | **Home / Clock**<br>Time, date, battery (a bolt while charging), outdoor weather and room temperature + humidity. Pick the watchface look in Settings → Home (Classic, or add the optional Neon face). |
+| <img src="assets/screens/home.png" width="170"> | **Home / Clock**<br>Time, date, battery (a bolt while charging), outdoor weather and room temperature + humidity. Pick the watchface look in Settings → Home - see [Watchfaces](#watchfaces) below. |
 | <img src="assets/screens/player.png" width="170"> | **Player**<br>Album art, title & artist, prev / play-pause / next and a progress bar. Auto-shows when playback starts. |
 | <img src="assets/screens/controls.png" width="170"> | **Control tiles** (swipe up)<br>Four configurable tiles toggling any HA entity; each has its own icon and label, and the colour follows the live on/off state. |
 | <img src="assets/screens/weather.png" width="170"> | **Weather**<br>A 7-day dial; turn the knob to scroll days. Animated condition icon, colour-coded temperature, and a glow that slides to the selected day. |
@@ -51,10 +51,18 @@ Everything is navigated with **swipes + taps on the screen** and the **rotary kn
 | <img src="assets/screens/cool-cars.png" width="170"> | **Cool Cars**<br>A lane-racing arcade game - the knob steers, dodge traffic and grab coins. |
 | <img src="assets/screens/space-wars.png" width="170"> | **Space Wars**<br>A vertical space shooter - the knob steers, auto-fire, survive the waves. |
 | <img src="assets/screens/snake.png" width="170"> | **Snake 360**<br>A smooth-steering 360-degree snake - turn the knob to steer the head and the body trails behind, across the whole round screen. |
-| <img src="assets/screens/settings.png" width="170"> | **Settings** (swipe down)<br>Display, Home, Widgets, Ring, Assistant, System; turn the knob to scroll, tap to enter. |
+| <img src="assets/screens/settings.png" width="170"> | **Settings** (swipe down)<br>Display, Home screen, Widgets, LED Ring, Voice Assistant, System; turn the knob to scroll, tap to enter. |
 | <img src="assets/screens/demo.png" width="170"> | **Demo**<br>A small, heavily commented example screen (tap flips black ↔ white) to copy when building your own. |
 
 > Optional screens (player, timer, games, weather, thermostat, sensors, demo) are pickable - choose which compile in and their order; see [Configuration](https://github.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/wiki/Configuration).
+
+## Watchfaces
+
+The home screen has a **selectable look**. Open **Settings → Home → Watchface** and the knob previews each face live, full-screen - tap to keep. **Classic** is built in; **Neon** and a heavily-commented **Demo** template are optional files you switch on in your config, and you can copy Demo to build your own (see [Configuration](https://github.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/wiki/Configuration)).
+
+| Classic (built-in) | Neon (optional) | Demo (template) |
+|:---:|:---:|:---:|
+| <img src="assets/screens/home.png" width="150"> | <img src="assets/screens/watchface-neon.png" width="150"> | <img src="assets/screens/watchface-demo.png" width="150"> |
 
 ## Documentation
 
