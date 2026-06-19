@@ -41,7 +41,7 @@ Everything is navigated with **swipes + taps on the screen** and the **rotary kn
 
 | Screen | View |
 |:---:|---|
-| <img src="assets/screens/home.png" width="170"> | **Home / Clock**<br>Time, date, battery (a bolt while charging), outdoor weather and room temperature + humidity. |
+| <img src="assets/screens/home.png" width="170"> | **Home / Clock**<br>Time, date, battery (a bolt while charging), outdoor weather and room temperature + humidity. Pick the watchface look in Settings → Home (Classic, or add the optional Neon face). |
 | <img src="assets/screens/player.png" width="170"> | **Player**<br>Album art, title & artist, prev / play-pause / next and a progress bar. Auto-shows when playback starts. |
 | <img src="assets/screens/controls.png" width="170"> | **Control tiles** (swipe up)<br>Four configurable tiles toggling any HA entity; each has its own icon and label, and the colour follows the live on/off state. |
 | <img src="assets/screens/weather.png" width="170"> | **Weather**<br>A 7-day dial; turn the knob to scroll days. Animated condition icon, colour-coded temperature, and a glow that slides to the selected day. |
@@ -101,6 +101,8 @@ base/                      # pulled as a remote package at compile time (no need
     sensors.yaml           #   sensors glance (1-6 HA entities, knob cycles)
     demo.yaml              #   commented example screen
     weather.ha-helper.yaml #   HA template sensor that feeds the weather screen
+  watchfaces/              # optional home-screen looks (Classic is built into core)
+    neon.yaml              #   "Neon" watchface - big two-tone digits + neon rings
 assets/                    # fetched from GitHub at compile time (no need to copy locally)
   header.jpg               # banner
   sounds/                  # wake.wav + alarm.wav
