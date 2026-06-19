@@ -1,0 +1,460 @@
+# Gyruss - optional carousel screen (base id 10). A tube shooter: your ship orbits the rim, you
+# auto-fire inward, foes spiral out from the centre. Turn the knob to aim, blast them before they
+# reach you. Remove it: drop this file from your config's package "files:" list. Nothing else to edit.
+# Scores (g_gy_top / g_gy_best) + the "Reset scores" settings action live here - fully self-contained.
+#
+# Perf: ship + bullet pool (6) + enemy pool (10) are all positioned each tick from float arrays in
+# ONE lambda (lv_obj_set_pos over a pooled lv_obj_t* array - LVGL can't index a widget by a runtime
+# var), so per-tick cost is constant and the action chain stays shallow. Sprites have a fixed src
+# (enemies alternate enemy/enemy2 by slot), so there are no per-tick image swaps.
+
+esphome:
+  on_boot:
+    - priority: 655
+      then:
+        - lambda: 'id(g_present)[10] = true;'
+    - priority: 650
+      then:
+        - lambda: |-
+            int g = id(g_wgrp_n)++;
+            id(g_wgrp_labels) += (g ? "\n" : ""); id(g_wgrp_labels) += "Gyruss";
+            int o = id(g_wopt_n)++;
+            id(g_wopt_group)[o] = g; id(g_wopt_label)[o] = "Reset scores"; id(g_wopt_kind)[o] = 1; id(g_wopt_ptr)[o] = &id(g_gy_reset);
+
+globals:
+  - id: g_gy_best
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: g_gy_top
+    type: int[10]
+    restore_value: yes
+  - id: g_gy_reset
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: g_gy_state    # 0=menu 1=playing 2=game over 3=how-to 4=scores
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: g_gy_score
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: g_gy_lives
+    type: int
+    restore_value: no
+    initial_value: '3'
+  - id: g_gy_ship_ang   # ship orbit angle (radians)
+    type: float
+    restore_value: no
+    initial_value: '0.0'
+  - id: g_gy_dead
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: g_gy_fire_clk
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: g_gy_spawn_clk
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: g_gy_hud_dirty   # score/lives changed this tick -> refresh the HUD labels
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  # bullet pool (fly inward along a fixed radial)
+  - id: g_gy_br        # radius (px from centre)
+    type: float[6]
+    restore_value: no
+  - id: g_gy_ba        # angle (radians)
+    type: float[6]
+    restore_value: no
+  - id: g_gy_bon
+    type: bool[6]
+    restore_value: no
+  # enemy pool (spiral outward from the centre)
+  - id: g_gy_er
+    type: float[10]
+    restore_value: no
+  - id: g_gy_ea
+    type: float[10]
+    restore_value: no
+  - id: g_gy_eon
+    type: bool[10]
+    restore_value: no
+
+script:
+  # position every active widget from the float arrays (constant cost, one shallow lambda)
+  - id: gy_render
+    then:
+      - lambda: |-
+          const float R = 148.0f;
+          lv_obj_t *BB[6] = { id(gy_b0), id(gy_b1), id(gy_b2), id(gy_b3), id(gy_b4), id(gy_b5) };
+          for (int k = 0; k < 6; k++) {
+            if (id(g_gy_bon)[k]) {
+              float r = id(g_gy_br)[k], a = id(g_gy_ba)[k];
+              lv_obj_set_pos(BB[k], 180 + (int) lroundf(cosf(a) * r) - 6, 180 + (int) lroundf(sinf(a) * r) - 6);
+            } else lv_obj_set_pos(BB[k], 400, 400);
+          }
+          lv_obj_t *EE[10] = { id(gy_e0), id(gy_e1), id(gy_e2), id(gy_e3), id(gy_e4), id(gy_e5), id(gy_e6), id(gy_e7), id(gy_e8), id(gy_e9) };
+          for (int k = 0; k < 10; k++) {
+            if (id(g_gy_eon)[k]) {
+              float r = id(g_gy_er)[k], a = id(g_gy_ea)[k];
+              lv_obj_set_pos(EE[k], 180 + (int) lroundf(cosf(a) * r) - 12, 180 + (int) lroundf(sinf(a) * r) - 12);
+            } else lv_obj_set_pos(EE[k], 400, 400);
+          }
+          float sa = id(g_gy_ship_ang);
+          lv_obj_set_pos(id(gy_ship), 180 + (int) lroundf(cosf(sa) * R) - 16, 180 + (int) lroundf(sinf(sa) * R) - 16);
+  - id: gy_hud
+    then:
+      - lvgl.label.update: { id: lbl_gy_score, text: !lambda 'char b[12]; snprintf(b,sizeof(b),"%d",id(g_gy_score)); return std::string(b);' }
+      - lvgl.label.update: { id: lbl_gy_lives, text: !lambda 'char b[16]; snprintf(b,sizeof(b),"LIVES  %d",id(g_gy_lives)<0?0:id(g_gy_lives)); return std::string(b);' }
+  # park every gameplay widget off-screen
+  - id: gy_clear
+    then:
+      - lambda: |-
+          lv_obj_t *BB[6] = { id(gy_b0), id(gy_b1), id(gy_b2), id(gy_b3), id(gy_b4), id(gy_b5) };
+          for (int k = 0; k < 6; k++) lv_obj_set_pos(BB[k], 400, 400);
+          lv_obj_t *EE[10] = { id(gy_e0), id(gy_e1), id(gy_e2), id(gy_e3), id(gy_e4), id(gy_e5), id(gy_e6), id(gy_e7), id(gy_e8), id(gy_e9) };
+          for (int k = 0; k < 10; k++) lv_obj_set_pos(EE[k], 400, 400);
+          lv_obj_set_pos(id(gy_ship), 400, 400);
+  - id: gy_start
+    then:
+      - lambda: |-
+          id(g_gy_state) = 1; id(g_gy_score) = 0; id(g_gy_lives) = 3; id(g_gy_dead) = false;
+          id(g_gy_ship_ang) = -1.5708f;        // start at the top
+          id(g_gy_fire_clk) = 0; id(g_gy_spawn_clk) = 0;
+          for (int k = 0; k < 6; k++) id(g_gy_bon)[k] = false;
+          for (int k = 0; k < 10; k++) id(g_gy_eon)[k] = false;
+          id(g_knob_capture) = true; id(g_knob_delta) = 0;
+      - script.execute: gy_screen
+      - script.execute: gy_hud
+  - id: gy_over
+    then:
+      - lambda: |-
+          id(g_gy_state) = 2;
+          int s = id(g_gy_score);
+          if (s > id(g_gy_best)) id(g_gy_best) = s;
+          for (int i = 0; i < 10; i++) {
+            if (s > id(g_gy_top)[i]) {
+              for (int j = 9; j > i; j--) id(g_gy_top)[j] = id(g_gy_top)[j-1];
+              id(g_gy_top)[i] = s;
+              break;
+            }
+          }
+      - script.execute: gy_screen
+  # screen state + the single knob-capture authority (captured only in play + game over)
+  - id: gy_screen
+    then:
+      - lambda: 'id(g_knob_capture) = (id(g_gy_state) == 1 || id(g_gy_state) == 2);'
+      - script.execute: gy_clear
+      - lvgl.widget.hide: gy_ring
+      - lvgl.widget.hide: gy_core
+      - lvgl.widget.hide: lbl_gy_score
+      - lvgl.widget.hide: lbl_gy_lives
+      - lvgl.widget.hide: lbl_gy_title
+      - lvgl.widget.hide: lbl_gy_sub
+      - lvgl.widget.hide: btn_gy_start
+      - lvgl.widget.hide: btn_gy_howto
+      - lvgl.widget.hide: btn_gy_scores
+      - lvgl.widget.hide: lbl_gy_over
+      - lvgl.widget.hide: lbl_gy_rec
+      - lvgl.widget.hide: btn_gy_replay
+      - lvgl.widget.hide: btn_gy_exit
+      - lvgl.widget.hide: lbl_gy_howto_t
+      - lvgl.widget.hide: gy_hb1
+      - lvgl.widget.hide: gy_hb2
+      - lvgl.widget.hide: gy_hb3
+      - lvgl.widget.hide: gy_hb4
+      - lvgl.widget.hide: lbl_gy_howto1
+      - lvgl.widget.hide: lbl_gy_howto2
+      - lvgl.widget.hide: lbl_gy_howto3
+      - lvgl.widget.hide: lbl_gy_howto4
+      - lvgl.widget.hide: lbl_gy_scores_t
+      - lvgl.widget.hide: lbl_gy_scores1
+      - lvgl.widget.hide: lbl_gy_scores2
+      - lvgl.widget.hide: btn_gy_back
+      - if:   # MENU
+          condition: { lambda: 'return id(g_gy_state) == 0;' }
+          then:
+            - lvgl.widget.show: lbl_gy_title
+            - lvgl.widget.show: lbl_gy_sub
+            - lvgl.widget.show: btn_gy_start
+            - lvgl.widget.show: btn_gy_howto
+            - lvgl.widget.show: btn_gy_scores
+      - if:   # PLAY
+          condition: { lambda: 'return id(g_gy_state) == 1;' }
+          then:
+            - lvgl.widget.show: gy_ring
+            - lvgl.widget.show: gy_core
+            - lvgl.widget.show: lbl_gy_score
+            - lvgl.widget.show: lbl_gy_lives
+            - script.execute: gy_render
+      - if:   # GAME OVER
+          condition: { lambda: 'return id(g_gy_state) == 2;' }
+          then:
+            - lvgl.widget.show: lbl_gy_title
+            - lvgl.widget.show: lbl_gy_over
+            - lvgl.widget.show: lbl_gy_rec
+            - lvgl.widget.show: btn_gy_replay
+            - lvgl.widget.show: btn_gy_exit
+            - lvgl.label.update: { id: lbl_gy_over, text: !lambda 'char b[24]; snprintf(b,sizeof(b),"Score: %d", id(g_gy_score)); return std::string(b);' }
+            - lvgl.label.update: { id: lbl_gy_rec,  text: !lambda 'char b[24]; snprintf(b,sizeof(b),"Best: %d", id(g_gy_best)); return std::string(b);' }
+      - if:   # HOW TO PLAY
+          condition: { lambda: 'return id(g_gy_state) == 3;' }
+          then:
+            - lvgl.widget.show: lbl_gy_howto_t
+            - lvgl.widget.show: gy_hb1
+            - lvgl.widget.show: gy_hb2
+            - lvgl.widget.show: gy_hb3
+            - lvgl.widget.show: gy_hb4
+            - lvgl.widget.show: lbl_gy_howto1
+            - lvgl.widget.show: lbl_gy_howto2
+            - lvgl.widget.show: lbl_gy_howto3
+            - lvgl.widget.show: lbl_gy_howto4
+            - lvgl.widget.show: btn_gy_back
+      - if:   # SCORES (top 10)
+          condition: { lambda: 'return id(g_gy_state) == 4;' }
+          then:
+            - lvgl.widget.show: lbl_gy_scores_t
+            - lvgl.widget.show: lbl_gy_scores1
+            - lvgl.widget.show: lbl_gy_scores2
+            - lvgl.widget.show: btn_gy_back
+            - lvgl.label.update:
+                id: lbl_gy_scores1
+                text: !lambda |-
+                  std::string s; char b[24];
+                  for (int i = 0; i < 5; i++) { if(i) s += "\n"; if(id(g_gy_top)[i]>0){ snprintf(b,sizeof(b),"%d.  %d",i+1,id(g_gy_top)[i]); } else { snprintf(b,sizeof(b),"%d.  -",i+1); } s += b; }
+                  return s;
+            - lvgl.label.update:
+                id: lbl_gy_scores2
+                text: !lambda |-
+                  std::string s; char b[24];
+                  for (int i = 5; i < 10; i++) { if(i>5) s += "\n"; if(id(g_gy_top)[i]>0){ snprintf(b,sizeof(b),"%d.  %d",i+1,id(g_gy_top)[i]); } else { snprintf(b,sizeof(b),"%d.  -",i+1); } s += b; }
+                  return s;
+
+interval:
+  - interval: 250ms
+    then:
+      - if:
+          condition: { lambda: 'return id(g_gy_reset) || id(g_factory_reset);' }
+          then:
+            - lambda: 'for (int i = 0; i < 10; i++) id(g_gy_top)[i] = 0; id(g_gy_best) = 0; id(g_gy_reset) = false;'
+  - interval: 50ms
+    then:
+      - if:
+          condition: { lambda: 'return id(g_nav_req) && id(g_base)==10;' }
+          then:
+            - lambda: 'id(g_nav_req) = false; id(g_gy_state) = 0; id(g_knob_delta) = 0;'
+            - if: { condition: { lambda: 'return id(g_nav_anim)==0;' }, then: [lvgl.page.show: { id: page_gyruss, animation: move_left,   time: 250ms }] }
+            - if: { condition: { lambda: 'return id(g_nav_anim)==1;' }, then: [lvgl.page.show: { id: page_gyruss, animation: move_right,  time: 250ms }] }
+            - if: { condition: { lambda: 'return id(g_nav_anim)==2;' }, then: [lvgl.page.show: { id: page_gyruss, animation: move_top,    time: 250ms }] }
+            - if: { condition: { lambda: 'return id(g_nav_anim)==3;' }, then: [lvgl.page.show: { id: page_gyruss, animation: move_bottom, time: 250ms }] }
+            - script.execute: gy_screen
+  # Game tick: aim (knob) + auto-fire + spiral the foes + collisions; all positioning in gy_render.
+  - interval: 50ms
+    then:
+      - if:
+          condition: { lambda: 'return id(g_base) == 10 && id(g_gy_state) == 1;' }
+          then:
+            - lambda: |-
+                id(g_gy_hud_dirty) = false;
+                int kd = id(g_knob_delta); id(g_knob_delta) = 0;
+                id(g_gy_ship_ang) += kd * 0.16f;
+                // auto-fire a bullet down the ship's radial
+                if (++id(g_gy_fire_clk) >= 5) {
+                  id(g_gy_fire_clk) = 0;
+                  for (int k = 0; k < 6; k++) if (!id(g_gy_bon)[k]) { id(g_gy_bon)[k] = true; id(g_gy_br)[k] = 138.0f; id(g_gy_ba)[k] = id(g_gy_ship_ang); break; }
+                }
+                for (int k = 0; k < 6; k++) if (id(g_gy_bon)[k]) { id(g_gy_br)[k] -= 9.0f; if (id(g_gy_br)[k] < 12.0f) id(g_gy_bon)[k] = false; }
+                // spawn foes from the core (faster as the score climbs)
+                int sw = 24 - id(g_gy_score) / 200; if (sw < 9) sw = 9;
+                if (++id(g_gy_spawn_clk) >= sw) {
+                  id(g_gy_spawn_clk) = 0;
+                  for (int k = 0; k < 10; k++) if (!id(g_gy_eon)[k]) {
+                    float a = (esp_random() % 62832) / 10000.0f;
+                    id(g_gy_eon)[k] = true; id(g_gy_er)[k] = 18.0f; id(g_gy_ea)[k] = a; break;
+                  }
+                }
+                // foes spiral outward; reaching the rim costs a life only if they hit the ship
+                float esp = 1.5f + id(g_gy_score) / 1500.0f; if (esp > 3.2f) esp = 3.2f;
+                for (int k = 0; k < 10; k++) if (id(g_gy_eon)[k]) {
+                  id(g_gy_er)[k] += esp; id(g_gy_ea)[k] += 0.05f;
+                  if (id(g_gy_er)[k] >= 146.0f) {
+                    float da = id(g_gy_ea)[k] - id(g_gy_ship_ang); da = atan2f(sinf(da), cosf(da));
+                    if (fabsf(da) < 0.30f) { id(g_gy_lives)--; id(g_gy_hud_dirty) = true; if (id(g_gy_lives) <= 0) id(g_gy_dead) = true; }
+                    id(g_gy_eon)[k] = false;
+                  }
+                }
+                // bullet vs foe (polar proximity)
+                for (int b = 0; b < 6; b++) if (id(g_gy_bon)[b]) for (int e = 0; e < 10; e++) if (id(g_gy_eon)[e]) {
+                  float dr = id(g_gy_br)[b] - id(g_gy_er)[e]; if (dr < 0) dr = -dr;
+                  if (dr < 13.0f) {
+                    float da = id(g_gy_ba)[b] - id(g_gy_ea)[e]; da = atan2f(sinf(da), cosf(da));
+                    if (fabsf(da) < 0.28f) { id(g_gy_bon)[b] = false; id(g_gy_eon)[e] = false; id(g_gy_score) += 10; id(g_gy_hud_dirty) = true; break; }
+                  }
+                }
+            - script.execute: gy_render
+            - if:
+                condition: { lambda: 'return id(g_gy_dead);' }
+                then:
+                  - script.execute: gy_over
+                else:
+                  - if:
+                      condition: { lambda: 'return id(g_gy_hud_dirty);' }
+                      then:
+                        - script.execute: gy_hud
+
+# Sprites are pulled from the BETA raw URLs while this lives on beta - flip /beta/ -> /main/ at merge.
+image:
+  - id: img_gy_ship
+    file: "https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/sprites/gyruss/ship.png"
+    type: RGB565
+    transparency: alpha_channel
+  - id: img_gy_enemy
+    file: "https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/sprites/gyruss/enemy.png"
+    type: RGB565
+    transparency: alpha_channel
+  - id: img_gy_enemy2
+    file: "https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/sprites/gyruss/enemy2.png"
+    type: RGB565
+    transparency: alpha_channel
+  - id: img_gy_bullet
+    file: "https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/sprites/gyruss/bullet.png"
+    type: RGB565
+    transparency: alpha_channel
+  - id: img_gy_core
+    file: "https://raw.githubusercontent.com/MichalZaniewicz/esphome-guition-jc3636k718c-va/beta/assets/sprites/gyruss/core.png"
+    type: RGB565
+    transparency: alpha_channel
+
+lvgl:
+  pages:
+    - id: page_gyruss
+      bg_color: 0x070611
+      scrollbar_mode: "off"
+      scrollable: false
+      widgets:
+        - obj: { id: gy_ring, align: CENTER, x: 0, y: 0, width: 300, height: 300, radius: 150, bg_opa: TRANSP, border_width: 2, border_color: 0x223052, hidden: true }
+        - image: { id: gy_core, align: CENTER, x: 0, y: 0, src: img_gy_core, hidden: true }
+        - image: { id: gy_e0, x: 400, y: 400, src: img_gy_enemy }
+        - image: { id: gy_e1, x: 400, y: 400, src: img_gy_enemy2 }
+        - image: { id: gy_e2, x: 400, y: 400, src: img_gy_enemy }
+        - image: { id: gy_e3, x: 400, y: 400, src: img_gy_enemy2 }
+        - image: { id: gy_e4, x: 400, y: 400, src: img_gy_enemy }
+        - image: { id: gy_e5, x: 400, y: 400, src: img_gy_enemy2 }
+        - image: { id: gy_e6, x: 400, y: 400, src: img_gy_enemy }
+        - image: { id: gy_e7, x: 400, y: 400, src: img_gy_enemy2 }
+        - image: { id: gy_e8, x: 400, y: 400, src: img_gy_enemy }
+        - image: { id: gy_e9, x: 400, y: 400, src: img_gy_enemy2 }
+        - image: { id: gy_b0, x: 400, y: 400, src: img_gy_bullet }
+        - image: { id: gy_b1, x: 400, y: 400, src: img_gy_bullet }
+        - image: { id: gy_b2, x: 400, y: 400, src: img_gy_bullet }
+        - image: { id: gy_b3, x: 400, y: 400, src: img_gy_bullet }
+        - image: { id: gy_b4, x: 400, y: 400, src: img_gy_bullet }
+        - image: { id: gy_b5, x: 400, y: 400, src: img_gy_bullet }
+        - image: { id: gy_ship, x: 400, y: 400, src: img_gy_ship }
+        - label: { id: lbl_gy_score, align: CENTER, x: 0, y: -150, text: "0", text_font: font_med, text_color: 0xCFE4FF, hidden: true }
+        - label: { id: lbl_gy_lives, align: CENTER, x: 0, y: 150, text: "LIVES  3", text_font: font_artist, text_color: 0xFF7A6A, hidden: true }
+        - label: { id: lbl_gy_title, align: CENTER, x: 0, y: -86, text: "GYRUSS", text_font: font_sel, text_color: 0x46E3D0, hidden: true }
+        - label: { id: lbl_gy_sub, align: CENTER, x: 0, y: -52, text: "tube shooter", text_font: font_artist, text_color: 0x6B7BA6, hidden: true }
+        - button:
+            id: btn_gy_start
+            align: CENTER
+            y: 4
+            width: 150
+            height: 44
+            radius: 22
+            bg_color: 0x39C6E6
+            bg_opa: COVER
+            border_width: 0
+            on_click: [ script.execute: gy_start ]
+            widgets:
+              - label: { align: CENTER, text: "Start", text_font: font_med, text_color: 0x06131A }
+        - button:
+            id: btn_gy_howto
+            align: CENTER
+            y: 54
+            width: 150
+            height: 44
+            radius: 22
+            bg_color: 0x1C2A44
+            bg_opa: COVER
+            border_width: 0
+            on_click: [ lambda: 'id(g_gy_state) = 3;', script.execute: gy_screen ]
+            widgets:
+              - label: { align: CENTER, text: "How to play?", text_font: font_med, text_color: 0xC4D2F0 }
+        - button:
+            id: btn_gy_scores
+            align: CENTER
+            y: 104
+            width: 150
+            height: 44
+            radius: 22
+            bg_color: 0x1C2A44
+            bg_opa: COVER
+            border_width: 0
+            on_click: [ lambda: 'id(g_gy_state) = 4;', script.execute: gy_screen ]
+            widgets:
+              - label: { align: CENTER, text: "Scores", text_font: font_med, text_color: 0xC4D2F0 }
+        - label: { id: lbl_gy_over, align: CENTER, x: 0, y: -10, text_align: CENTER, text: "", text_font: font_sel, text_color: 0xCFE4FF, hidden: true }
+        - label: { id: lbl_gy_rec, align: CENTER, x: 0, y: 22, text_align: CENTER, text: "", text_font: font_artist, text_color: 0x6B7BA6, hidden: true }
+        - button:
+            id: btn_gy_replay
+            align: CENTER
+            x: -66
+            y: 62
+            width: 112
+            height: 48
+            radius: 24
+            bg_color: 0x39C6E6
+            bg_opa: COVER
+            border_width: 0
+            hidden: true
+            on_click: [ script.execute: gy_start ]
+            widgets:
+              - label: { align: CENTER, text: "Play", text_font: font_med, text_color: 0x06131A }
+        - button:
+            id: btn_gy_exit
+            align: CENTER
+            x: 66
+            y: 62
+            width: 112
+            height: 48
+            radius: 24
+            bg_color: 0x2A2E3D
+            bg_opa: COVER
+            border_width: 0
+            hidden: true
+            on_click: [ lambda: 'id(g_gy_state) = 0;', script.execute: gy_screen ]
+            widgets:
+              - label: { align: CENTER, text: "Exit", text_font: font_med, text_color: 0xFFFFFF }
+        - label: { id: lbl_gy_howto_t, align: CENTER, y: -104, text: "HOW TO PLAY?", text_font: font_sel, text_color: 0x46E3D0, hidden: true }
+        - obj: { id: gy_hb1, align: CENTER, x: -96, y: -52, width: 24, height: 24, radius: 12, bg_color: 0x2C6FB2, bg_opa: COVER, border_width: 0, pad_all: 0, hidden: true, widgets: [ label: { align: CENTER, text: "1", text_font: font_artist, text_color: 0xFFFFFF } ] }
+        - obj: { id: gy_hb2, align: CENTER, x: -96, y: -16, width: 24, height: 24, radius: 12, bg_color: 0x2C6FB2, bg_opa: COVER, border_width: 0, pad_all: 0, hidden: true, widgets: [ label: { align: CENTER, text: "2", text_font: font_artist, text_color: 0xFFFFFF } ] }
+        - obj: { id: gy_hb3, align: CENTER, x: -96, y: 20, width: 24, height: 24, radius: 12, bg_color: 0x2C6FB2, bg_opa: COVER, border_width: 0, pad_all: 0, hidden: true, widgets: [ label: { align: CENTER, text: "3", text_font: font_artist, text_color: 0xFFFFFF } ] }
+        - obj: { id: gy_hb4, align: CENTER, x: -96, y: 56, width: 24, height: 24, radius: 12, bg_color: 0xE0584A, bg_opa: COVER, border_width: 0, pad_all: 0, hidden: true, widgets: [ label: { align: CENTER, text: "!", text_font: font_artist, text_color: 0xFFFFFF } ] }
+        - label: { id: lbl_gy_howto1, align_to: { id: gy_hb1, align: OUT_RIGHT_MID, x: 8 }, text: "Turn knob to aim", text_font: font_med, text_color: 0xC4D2F0, hidden: true }
+        - label: { id: lbl_gy_howto2, align_to: { id: gy_hb2, align: OUT_RIGHT_MID, x: 8 }, text: "You auto-fire inward", text_font: font_med, text_color: 0xC4D2F0, hidden: true }
+        - label: { id: lbl_gy_howto3, align_to: { id: gy_hb3, align: OUT_RIGHT_MID, x: 8 }, text: "Blast foes before the rim", text_font: font_med, text_color: 0xC4D2F0, hidden: true }
+        - label: { id: lbl_gy_howto4, align_to: { id: gy_hb4, align: OUT_RIGHT_MID, x: 8 }, text: "3 lives - dodge & shoot", text_font: font_med, text_color: 0xC4D2F0, hidden: true }
+        - label: { id: lbl_gy_scores_t, align: CENTER, y: -116, text: "SCORES", text_font: font_sel, text_color: 0x46E3D0, hidden: true }
+        - label: { id: lbl_gy_scores1, align: CENTER, x: -52, y: 0, text: "", text_align: LEFT, text_font: font_artist, text_color: 0xC4D2F0, hidden: true }
+        - label: { id: lbl_gy_scores2, align: CENTER, x: 56, y: 0, text: "", text_align: LEFT, text_font: font_artist, text_color: 0xC4D2F0, hidden: true }
+        - button:
+            id: btn_gy_back
+            align: CENTER
+            y: 120
+            width: 130
+            height: 42
+            radius: 21
+            bg_color: 0x2A2E3D
+            bg_opa: COVER
+            border_width: 0
+            hidden: true
+            on_click: [ lambda: 'id(g_gy_state) = 0;', script.execute: gy_screen ]
+            widgets:
+              - label: { align: CENTER, text: "Back", text_font: font_med, text_color: 0xFFFFFF }

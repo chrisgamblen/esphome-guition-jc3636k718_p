@@ -3,6 +3,11 @@
 All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.2.5] - 2026-06-19
+
+### Added
+- New **Gyruss** game (optional carousel screen): a tube shooter - your ship orbits the rim, you auto-fire inward, foes spiral out from the centre. Turn the knob to aim, 3 lives, top-10 scores.
+
 ## [2.2.4] - 2026-06-19
 
 ### Changed
