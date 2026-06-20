@@ -301,7 +301,7 @@ script:
       - if:   # GAME OVER
           condition: { lambda: 'return id(g_gy_state) == 2;' }
           then:
-            - lvgl.widget.show: lbl_gy_title
+            - lvgl.widget.show: gy_logo
             - lvgl.widget.show: lbl_gy_over
             - lvgl.widget.show: lbl_gy_rec
             - lvgl.widget.show: btn_gy_replay
