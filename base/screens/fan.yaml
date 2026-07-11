@@ -90,67 +90,88 @@ binary_sensor:
 # Draw the visual screen components
 lvgl:
   pages:
-    - id: page_fan  # Automatically registers because it matches 'page_' + screen_order tag
-      bg_color: 0x1C1C1C
+    - id: page_fan  
+      bg_color: 0x000000  # True black background to melt into the screen bezel
       widgets:
         
-        # 1. Outer Arc (Fan Speed Dial)
+        # Faint background accent ring for design depth
+        - obj:   
+            align: CENTER
+            width: 340
+            height: 340
+            radius: 170
+            bg_opa: TRANSP
+            border_width: 2
+            border_color: 0x1A1F2A
+            border_opa: 70%
+            clickable: false
+            scrollable: false
+
+        # 1. Main Fan Speed Track Arc (Matches the system volume UI theme)
         - arc:
             id: arc_fan_speed
             align: CENTER
-            width: 290
-            height: 290
+            width: 300
+            height: 300
+            arc_width: 10
             min_value: 0
             max_value: 26
-            bg_color: 0x444444
-            line_color: 0x50C878  # Emerald green tracker arc
-            arc_width: 6
+            bg_color: 0x0C4A44     # Deep dark teal track line
+            adjustable: false
+            start_angle: 135
+            end_angle: 45
+            indicator:
+              arc_color: 0x42F4DC  # Bright brand cyan active tracker line
+              arc_width: 10
             on_value:
               then:
-                # Provide instant numbers on screen while user turns knob
                 - lvgl.label.update:
                     id: lbl_fan_fraction
                     text: !lambda 'return str_snprintf("%d / 26", 0, (int)x);'
-                # Pass value to our debounced background delivery script
                 - script.execute:
                     id: delay_send_speed
                     value: !lambda 'return (int)x;'
 
-        # 2. Main Temperature Display
+        # 2. Main Temperature Display (Big, polished center positioning)
         - label:
             id: lbl_room_temp
             text: "--.-°C"
             align: CENTER
-            y: -40
-            text_font: font_sel
+            y: -30
+            text_color: 0xFFFFFF
+            text_font: montserrat_48
 
         # 3. Fan Speed Fraction Readout
         - label:
             id: lbl_fan_fraction
             text: "0 / 26"
             align: CENTER
-            y: 20
-            text_font: font_med
+            y: 24
+            text_color: 0xFFFFFF
+            text_font: montserrat_24
 
         # 4. Status Line (Running / Off)
         - label:
             id: lbl_fan_status
             text: "Off"
             align: CENTER
-            y: 55
-            text_color: 0xD4AF37 # Soft amber/gold text tone
-            text_font: font_bell
+            y: 56
+            text_color: 0xF5B83D   # Matches amber/gold system alert accent tone
+            text_font: font_med
 
-        # 5. Button Row: Horizontal Oscillation
-        - button:
+        # 5. Button Row: Horizontal Oscillation Toggle
+        - button:  
             id: btn_horiz_osc
-            width: 50
-            height: 50
-            x: -60
-            y: 110
+            width: 54
+            height: 44
+            x: -64
+            y: 115
             align: CENTER
-            bg_color: 0x1A1A1A
-            radius: 6
+            bg_color: 0x161A22
+            bg_opa: COVER          # Masks out background leakage lines
+            border_width: 1
+            border_color: 0x2A303C
+            radius: 10
             on_click:
               then:
                 - homeassistant.service:
@@ -159,20 +180,24 @@ lvgl:
                       entity_id: ${fan_horiz_osc_entity}
             widgets:
               - label:
-                  text: "↔"
+                  text: "HOR"      # Replaced arrow glyph with clear text to prevent tofu
                   align: CENTER
-                  text_color: 0x4A90E2
+                  text_color: 0x9AA3B0
+                  text_font: font_artist
 
-        # 6. Button Row: Vertical Oscillation
-        - button:
+        # 6. Button Row: Vertical Oscillation Toggle
+        - button:  
             id: btn_vert_osc
-            width: 50
-            height: 50
+            width: 54
+            height: 44
             x: 0
-            y: 110
+            y: 115
             align: CENTER
-            bg_color: 0x1A1A1A
-            radius: 6
+            bg_color: 0x161A22
+            bg_opa: COVER
+            border_width: 1
+            border_color: 0x2A303C
+            radius: 10
             on_click:
               then:
                 - homeassistant.service:
@@ -181,20 +206,24 @@ lvgl:
                       entity_id: ${fan_vert_osc_entity}
             widgets:
               - label:
-                  text: "↕"
+                  text: "VER"
                   align: CENTER
-                  text_color: 0x4A90E2
+                  text_color: 0x9AA3B0
+                  text_font: font_artist
 
-        # 7. Button Row: Main Power Toggle
-        - button:
+        # 7. Button Row: Main Power Toggle (Uses Native MDI Font Icon)
+        - button:  
             id: btn_fan_power
-            width: 50
-            height: 50
-            x: 60
-            y: 110
+            width: 54
+            height: 44
+            x: 64
+            y: 115
             align: CENTER
-            bg_color: 0x1A1A1A
-            radius: 6
+            bg_color: 0x161A22
+            bg_opa: COVER
+            border_width: 1
+            border_color: 0x2A303C
+            radius: 10
             on_click:
               then:
                 - homeassistant.service:
@@ -204,9 +233,10 @@ lvgl:
             widgets:
               - label:
                   id: lbl_btn_power
-                  text: "⏻"
+                  text: "\U000f0425" # Explicitly maps to the compiled MDI Power Glyph
                   align: CENTER
                   text_color: 0x555555
+                  text_font: icons34 # Forces selection from the loaded icon asset pack
 
 # Add this to the bottom of base/screens/fan.yaml
 interval:
