@@ -1605,7 +1605,8 @@ binary_sensor:
                                               then:
                                                 - lvgl.arc.update:
                                                     id: arc_fan_speed
-                                                    value: !lambda 'int v = (int)id(arc_fan_speed).value - 1; return v < 0 ? 0 : v;'
+                                                    # Uses the native function to safely read the arc's state
+                                                    value: !lambda 'int v = lv_arc_get_value(id(arc_fan_speed)->obj) - 1; return v < 0 ? 0 : v;'
                                               else:
                                                 - media_player.volume_down:
                                                     id: media_player_speaker
@@ -1683,7 +1684,8 @@ binary_sensor:
                                               then:
                                                 - lvgl.arc.update:
                                                     id: arc_fan_speed
-                                                    value: !lambda 'int v = (int)id(arc_fan_speed).value + 1; return v > 26 ? 26 : v;'
+                                                    # Uses the native function to safely read the arc's state
+                                                    value: !lambda 'int v = lv_arc_get_value(id(arc_fan_speed)->obj) + 1; return v > 26 ? 26 : v;'
                                               else:
                                                 - media_player.volume_up:
                                                     id: media_player_speaker
