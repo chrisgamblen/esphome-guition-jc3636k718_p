@@ -90,7 +90,7 @@ binary_sensor:
 # Draw the visual screen components
 lvgl:
   pages:
-    - id: page_demo  # Automatically registers because it matches 'page_' + screen_order tag
+    - id: page_fan  # Automatically registers because it matches 'page_' + screen_order tag
       bg_color: 0x1C1C1C
       widgets:
         
