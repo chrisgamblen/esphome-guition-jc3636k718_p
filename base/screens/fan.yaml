@@ -1,13 +1,10 @@
 # =============================================================================
-# Personal Fork Component: Custom Fan Screen Layout & Logic (Full Screen Tap Power)
+# Personal Fork Component: Custom Fan Screen Layout & Logic (Layered Tap Power)
 # Saved as: base/screens/fan.yaml
 # =============================================================================
 
 globals:
   - id: g_fan_speed
-    type: int
-    initial_value: '0'
-  - id: last_tap_seq
     type: int
     initial_value: '0'
 
@@ -136,7 +133,7 @@ lvgl:
                     id: delay_send_speed
                     value: !lambda 'return (int)x;'
 
-        # 2. Temperature Readout (Moved up to y: -55)
+        # 2. Temperature Readout
         - label:
             id: lbl_room_temp
             text: "--.-°C"
@@ -163,7 +160,27 @@ lvgl:
             text_color: 0x555555
             text_font: font_med
 
-        # 5. Symmetrical Button Left: Horizontal Oscillation
+        # 5. Invisible Full-Screen Power Tap Capture
+        # Uses a base obj instead of a button to prevent momentary theme/pressed color flashes.
+        # Rendered BEFORE the HOR/VER buttons so they sit cleanly on top of its touch space.
+        - obj:
+            id: btn_screen_power
+            align: CENTER
+            width: 340
+            height: 340
+            radius: 170
+            bg_opa: TRANSP
+            border_width: 0
+            clickable: true
+            scrollable: false
+            on_click:
+              then:
+                - homeassistant.action:
+                    action: fan.toggle
+                    data:
+                      entity_id: ${fan_entity}
+
+        # 6. Button Left: Horizontal Oscillation
         - button:  
             id: btn_horiz_osc
             width: 64
@@ -189,7 +206,7 @@ lvgl:
                   text_color: 0x9AA3B0
                   text_font: font_artist
 
-        # 6. Symmetrical Button Right: Vertical Oscillation
+        # 7. Button Right: Vertical Oscillation
         - button:  
             id: btn_vert_osc
             width: 64
@@ -261,14 +278,3 @@ interval:
             - script.execute:
                 id: delay_send_speed
                 value: !lambda 'return id(g_fan_speed);'
-
-      # D. Process Full Screen Taps (Filters Swipes Automatically)[cite: 1]
-      - if:
-          condition:
-            lambda: 'return id(g_base) == 11 && id(g_mode) == 0 && id(g_tap_seq) != id(last_tap_seq);'
-          then:
-            - lambda: 'id(last_tap_seq) = id(g_tap_seq);'
-            - homeassistant.action:
-                action: fan.toggle
-                data:
-                  entity_id: ${fan_entity}
