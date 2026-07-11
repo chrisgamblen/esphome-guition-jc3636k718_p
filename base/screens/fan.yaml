@@ -14,17 +14,15 @@ script:
     parameters:
       value: int
     then:
-      # Protective loop check: only talk to HA if the user moved the dial away from the current state
-      - if:
-          condition:
-            lambda: 'return (int)id(fan_speed_sensor).state != value;'
-          then:
-            - delay: 800ms  # The short transmission delay interval
-            - homeassistant.service:
-                service: number.set_value
-                data:
-                  entity_id: ${fan_speed_entity}
-                  value: !lambda 'return str_snprintf("%d", 0, value);'
+      # 1. Wait a moment while the user spins the dial so we don't spam the network
+      - delay: 300ms 
+      
+      # 2. Use the modern action engine to push the state change to Home Assistant
+      - homeassistant.action:
+          action: number.set_value
+          data:
+            entity_id: ${fan_speed_entity}
+            value: !lambda 'return std::to_string(value);' # Clean string conversion
 
 # Track state values from your old Home Assistant instance
 sensor:
