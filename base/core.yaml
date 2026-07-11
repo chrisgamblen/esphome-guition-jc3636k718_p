@@ -1599,19 +1599,10 @@ binary_sensor:
                                           - script.execute: face_apply
                                           - script.execute: facepick_render
                                         else:
-                                          # Intercept rotation on standard UI mode (0) when looking at the fan screen (11)
-                                          - if:
-                                              condition: { lambda: 'return id(g_mode) == 0 && id(g_base) == 11;' }
-                                              then:
-                                                - lvgl.arc.update:
-                                                    id: arc_fan_speed
-                                                    # Uses the native function to safely read the arc's state
-                                                    value: !lambda 'int v = lv_arc_get_value(id(arc_fan_speed)->obj) - 1; return v < 0 ? 0 : v;'
-                                              else:
-                                                - media_player.volume_down:
-                                                    id: media_player_speaker
-                                                - script.execute: flash_volume
-                                                - script.execute: ring_vol_flash
+                                          - media_player.volume_down:
+                                              id: media_player_speaker
+                                          - script.execute: flash_volume
+                                          - script.execute: ring_vol_flash
 
   - platform: gpio
     name: "Knob right"
@@ -1678,19 +1669,10 @@ binary_sensor:
                                           - script.execute: face_apply
                                           - script.execute: facepick_render
                                         else:
-                                          # Intercept rotation on standard UI mode (0) when looking at the fan screen (11)
-                                          - if:
-                                              condition: { lambda: 'return id(g_mode) == 0 && id(g_base) == 11;' }
-                                              then:
-                                                - lvgl.arc.update:
-                                                    id: arc_fan_speed
-                                                    # Uses the native function to safely read the arc's state
-                                                    value: !lambda 'int v = lv_arc_get_value(id(arc_fan_speed)->obj) + 1; return v > 26 ? 26 : v;'
-                                              else:
-                                                - media_player.volume_up:
-                                                    id: media_player_speaker
-                                                - script.execute: flash_volume
-                                                - script.execute: ring_vol_flash
+                                          - media_player.volume_up:
+                                              id: media_player_speaker
+                                          - script.execute: flash_volume
+                                          - script.execute: ring_vol_flash
 
 ###############################################################################
 # DISPLAY (QSPI ST77916) + BACKLIGHT + TOUCH (CST816)
