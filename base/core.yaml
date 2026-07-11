@@ -158,6 +158,7 @@ esphome:
               else if (tok == "sensors") id = 8;
               else if (tok == "snake") id = 9;
               else if (tok == "gyruss" || tok == "knobuss") id = 10;
+              else if (tok == "fan") id = 11; # <-- ADD THIS LINE
               if (id >= 0 && id < 16 && id(g_present)[id]) id(g_order)[id(g_order_n)++] = id;
               if (comma == std::string::npos) break;
               pos = comma + 1;
