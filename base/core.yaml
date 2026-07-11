@@ -84,6 +84,7 @@ esphome:
             id(g_set_labels) = "";
             for (int i = 0; i < 16; i++) id(g_present)[i] = false;
             id(g_present)[0] = true;   // clock is always present
+            id(g_present)[11] = true;  // fan is always present
             id(g_wgrp_n) = 0; id(g_wgrp_labels) = ""; id(g_wgrp_idx) = 0;
             id(g_wopt_n) = 0; id(g_wcur_n) = 0; id(g_wopt_idx) = 0;
     - priority: 790
