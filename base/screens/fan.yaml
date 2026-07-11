@@ -252,13 +252,45 @@ lvgl:
 interval:
   - interval: 50ms
     then:
+      # A. Handle Slide Page Navigation Requests (Keep this intact)
       - if:
           condition:
             lambda: 'return id(g_nav_req) && id(g_base) == 11;'
           then:
-            - lambda: 'id(g_nav_req) = false; // Consume the request so other screens ignore it'
-            # Check the global animation direction set by core.yaml and transition beautifully
+            - lambda: 'id(g_nav_req) = false;'
             - if: { condition: { lambda: 'return id(g_nav_anim) == 0;' }, then: [lvgl.page.show: { id: page_fan, animation: move_left,   time: 250ms }] }
             - if: { condition: { lambda: 'return id(g_nav_anim) == 1;' }, then: [lvgl.page.show: { id: page_fan, animation: move_right,  time: 250ms }] }
             - if: { condition: { lambda: 'return id(g_nav_anim) == 2;' }, then: [lvgl.page.show: { id: page_fan, animation: move_top,    time: 250ms }] }
             - if: { condition: { lambda: 'return id(g_nav_anim) == 3;' }, then: [lvgl.page.show: { id: page_fan, animation: move_bottom, time: 250ms }] }
+
+      # B. Intercept Knob Focus Natively
+      - lambda: |-
+          // If looking at our fan page (11) and not in a menu (0), hijack the knob focus
+          if (id(g_base) == 11 && id(g_mode) == 0) {
+            id(g_knob_capture) = true;
+          } else if (id(g_base) != 11 && id(g_knob_capture)) {
+            id(g_knob_capture) = false; // Give focus back to volume if we swipe away
+          }
+
+      # C. Process Dial Rotation Locally
+      - if:
+          condition:
+            lambda: 'return id(g_base) == 11 && id(g_knob_delta) != 0;'
+          then:
+            - lambda: |-
+                int delta = id(g_knob_delta);
+                id(g_knob_delta) = 0; // Instantly clear to prevent runaway loops
+                
+                // Safely calculate the updated clamped values locally
+                int cur = lv_arc_get_value(id(arc_fan_speed)->obj);
+                int target = cur + delta;
+                if (target < 0) target = 0;
+                if (target > 26) target = 26;
+                
+                if (target != cur) {
+                  // Push the updated speed integer directly to the widget structure
+                  lv_arc_set_value(id(arc_fan_speed)->obj, target);
+                  
+                  // Signal a change event so your text updates and background scripts execute
+                  lv_event_send(id(arc_fan_speed)->obj, LV_EVENT_VALUE_CHANGED, NULL);
+                }
