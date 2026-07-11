@@ -1,0 +1,209 @@
+# =============================================================================
+# Custom Fan Controller Screen Layout & Logic
+# =============================================================================
+
+# Background script to debounce physical dial rotation
+script:
+  - id: delay_send_speed
+    mode: restart
+    parameters:
+      value: int
+    then:
+      # Protective loop check: only talk to HA if the user moved the dial away from the current state
+      - if:
+          condition:
+            lambda: 'return (int)id(fan_speed_sensor).state != value;'
+          then:
+            - delay: 800ms  # The short transmission delay interval
+            - homeassistant.service:
+                service: number.set_value
+                data:
+                  entity_id: ${fan_speed_entity}
+                  value: !lambda 'return str_snprintf("%d", 0, value);'
+
+# Track state values from your old Home Assistant instance
+sensor:
+  - platform: homeassistant
+    entity_id: ${room_temp_entity}
+    id: fan_room_temp
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_room_temp
+            text: !lambda 'return str_snprintf("%.1f°C", 1, x);'
+
+  - platform: homeassistant
+    entity_id: ${fan_speed_entity}
+    id: fan_speed_sensor
+    on_value:
+      then:
+        - lvgl.arc.update:
+            id: arc_fan_speed
+            value: !lambda 'return (int)x;'
+        - lvgl.label.update:
+            id: lbl_fan_fraction
+            text: !lambda 'return str_snprintf("%d / 26", 0, (int)x);'
+
+text_sensor:
+  - platform: homeassistant
+    entity_id: ${fan_entity}
+    id: fan_state_sensor
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_fan_status
+            # Wrapped inside std::string to satisfy the compiler formatting engine
+            text: !lambda 'return std::string(x == "on" ? "Running" : "Off");'
+
+            
+binary_sensor:
+  - platform: homeassistant
+    entity_id: ${fan_horiz_osc_entity}
+    id: fan_horiz_state
+    on_state:
+      then:
+        - lvgl.widget.update:
+            id: btn_horiz_osc
+            # Wrapped in lv_color_hex to properly register as a UI background color
+            bg_color: !lambda 'return x ? lv_color_hex(0x2A3B4C) : lv_color_hex(0x1A1A1A);'
+
+  - platform: homeassistant
+    entity_id: ${fan_vert_osc_entity}
+    id: fan_vert_state
+    on_state:
+      then:
+        - lvgl.widget.update:
+            id: btn_vert_osc
+            # Wrapped in lv_color_hex to properly register as a UI background color
+            bg_color: !lambda 'return x ? lv_color_hex(0x2A3B4C) : lv_color_hex(0x1A1A1A);'
+
+  - platform: homeassistant
+    entity_id: ${fan_entity}
+    id: fan_power_state
+    on_state:
+      then:
+        - lvgl.label.update:
+            id: lbl_btn_power
+            # Wrapped in lv_color_hex to properly register as a UI text color
+            text_color: !lambda 'return x ? lv_color_hex(0x00FF88) : lv_color_hex(0x555555);'
+
+# Draw the visual screen components
+lvgl:
+  pages:
+    - id: page_demo  # Automatically registers because it matches 'page_' + screen_order tag
+      bg_color: 0x1C1C1C
+      widgets:
+        
+        # 1. Outer Arc (Fan Speed Dial)
+        - arc:
+            id: arc_fan_speed
+            align: CENTER
+            width: 290
+            height: 290
+            min_value: 0
+            max_value: 26
+            bg_color: 0x444444
+            line_color: 0x50C878  # Emerald green tracker arc
+            arc_width: 6
+            on_value:
+              then:
+                # Provide instant numbers on screen while user turns knob
+                - lvgl.label.update:
+                    id: lbl_fan_fraction
+                    text: !lambda 'return str_snprintf("%d / 26", 0, (int)x);'
+                # Pass value to our debounced background delivery script
+                - script.execute:
+                    id: delay_send_speed
+                    value: !lambda 'return (int)x;'
+
+        # 2. Main Temperature Display
+        - label:
+            id: lbl_room_temp
+            text: "--.-°C"
+            align: CENTER
+            y: -40
+            text_font: font_sel
+
+        # 3. Fan Speed Fraction Readout
+        - label:
+            id: lbl_fan_fraction
+            text: "0 / 26"
+            align: CENTER
+            y: 20
+            text_font: font_med
+
+        # 4. Status Line (Running / Off)
+        - label:
+            id: lbl_fan_status
+            text: "Off"
+            align: CENTER
+            y: 55
+            text_color: 0xD4AF37 # Soft amber/gold text tone
+            text_font: font_bell
+
+        # 5. Button Row: Horizontal Oscillation
+        - button:
+            id: btn_horiz_osc
+            width: 50
+            height: 50
+            x: -60
+            y: 110
+            align: CENTER
+            bg_color: 0x1A1A1A
+            radius: 6
+            on_click:
+              then:
+                - homeassistant.service:
+                    service: switch.toggle
+                    data:
+                      entity_id: ${fan_horiz_osc_entity}
+            widgets:
+              - label:
+                  text: "↔"
+                  align: CENTER
+                  text_color: 0x4A90E2
+
+        # 6. Button Row: Vertical Oscillation
+        - button:
+            id: btn_vert_osc
+            width: 50
+            height: 50
+            x: 0
+            y: 110
+            align: CENTER
+            bg_color: 0x1A1A1A
+            radius: 6
+            on_click:
+              then:
+                - homeassistant.service:
+                    service: switch.toggle
+                    data:
+                      entity_id: ${fan_vert_osc_entity}
+            widgets:
+              - label:
+                  text: "↕"
+                  align: CENTER
+                  text_color: 0x4A90E2
+
+        # 7. Button Row: Main Power Toggle
+        - button:
+            id: btn_fan_power
+            width: 50
+            height: 50
+            x: 60
+            y: 110
+            align: CENTER
+            bg_color: 0x1A1A1A
+            radius: 6
+            on_click:
+              then:
+                - homeassistant.service:
+                    service: fan.toggle
+                    data:
+                      entity_id: ${fan_entity}
+            widgets:
+              - label:
+                  id: lbl_btn_power
+                  text: "⏻"
+                  align: CENTER
+                  text_color: 0x555555
