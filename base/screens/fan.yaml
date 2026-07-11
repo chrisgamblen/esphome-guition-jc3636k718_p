@@ -30,7 +30,11 @@ sensor:
       then:
         - lvgl.label.update:
             id: lbl_room_temp
-            text: !lambda 'return str_snprintf("%.1f°C", 1, x);'
+            # Formats the decimal number to a standard string layout
+            text: !lambda |-
+              char b[16];
+              snprintf(b, sizeof(b), "%.1f°C", x);
+              return std::string(b);
 
   - platform: homeassistant
     entity_id: ${fan_speed_entity}
@@ -42,7 +46,10 @@ sensor:
             value: !lambda 'return (int)x;'
         - lvgl.label.update:
             id: lbl_fan_fraction
-            text: !lambda 'return str_snprintf("%d / 26", 0, (int)x);'
+            text: !lambda |-
+              char b[16];
+              snprintf(b, sizeof(b), "%d / 26", (int)x);
+              return std::string(b);
 
 text_sensor:
   - platform: homeassistant
@@ -116,18 +123,21 @@ lvgl:
             arc_width: 10
             min_value: 0
             max_value: 26
-            bg_color: 0x0C4A44     # Deep dark teal track line
+            bg_color: 0x0C4A44
             adjustable: false
             start_angle: 135
             end_angle: 45
             indicator:
-              arc_color: 0x42F4DC  # Bright brand cyan active tracker line
+              arc_color: 0x42F4DC
               arc_width: 10
             on_value:
               then:
                 - lvgl.label.update:
                     id: lbl_fan_fraction
-                    text: !lambda 'return str_snprintf("%d / 26", 0, (int)x);'
+                    text: !lambda |-
+                      char b[16];
+                      snprintf(b, sizeof(b), "%d / 26", (int)x);
+                      return std::string(b);
                 - script.execute:
                     id: delay_send_speed
                     value: !lambda 'return (int)x;'
